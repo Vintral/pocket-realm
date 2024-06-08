@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	realmTest "github.com/Vintral/pocket-realm-test-access/test"
+	realmTest "github.com/Vintral/pocket-realm/test"
 )
 
 func main() {

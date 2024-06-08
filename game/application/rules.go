@@ -3,7 +3,7 @@ package application
 import (
 	"fmt"
 
-	"github.com/Vintral/pocket-realm-test-access/models"
+	"github.com/Vintral/pocket-realm/models"
 )
 
 func GetRules(user *models.User) {

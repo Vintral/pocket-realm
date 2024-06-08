@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/Vintral/pocket-realm-test-access/game/utilities"
+	"github.com/Vintral/pocket-realm/game/utilities"
 )
 
 const timeOut = 10

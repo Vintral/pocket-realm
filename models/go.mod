@@ -1,9 +1,9 @@
-module github.com/Vintral/pocket-realm-test-access/models
+module github.com/Vintral/pocket-realm/models
 
 go 1.21.5
 
 require (
-	github.com/Vintral/pocket-realm-test-access/game v0.0.0-20240608100238-697a714f2c8b
+	github.com/Vintral/pocket-realm/game v0.0.0-20240608100238-697a714f2c8b
 	go.opentelemetry.io/otel v1.25.0
 	go.opentelemetry.io/otel/sdk v1.25.0
 )

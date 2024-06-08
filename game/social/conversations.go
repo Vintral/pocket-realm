@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Vintral/pocket-realm-test-access/game/utilities"
-	"github.com/Vintral/pocket-realm-test-access/models"
+	"github.com/Vintral/pocket-realm/game/utilities"
+	"github.com/Vintral/pocket-realm/models"
 
 	"github.com/google/uuid"
 	attributes "go.opentelemetry.io/otel/attribute"

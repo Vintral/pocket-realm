@@ -1,4 +1,4 @@
-module github.com/Vintral/pocket-realm-test-access/payloads
+module github.com/Vintral/pocket-realm/payloads
 
 go 1.21.5
 

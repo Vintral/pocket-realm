@@ -8,9 +8,9 @@ import (
 	"math/rand"
 	"strconv"
 
-	"github.com/Vintral/pocket-realm-test-access/game/utilities"
-	"github.com/Vintral/pocket-realm-test-access/models"
-	"github.com/Vintral/pocket-realm-test-access/payloads"
+	"github.com/Vintral/pocket-realm/game/utilities"
+	"github.com/Vintral/pocket-realm/models"
+	"github.com/Vintral/pocket-realm/payloads"
 )
 
 func gatherStat(energy int, before float64, tick float64) (float64, float64, float64) {
