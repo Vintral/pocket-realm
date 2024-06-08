@@ -21,12 +21,10 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
-	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 var traceProvider *trace.TracerProvider
-var redisClient *redis.Client
 
 func Testing() {
 	fmt.Println("HEYO")
