@@ -1,4 +1,5 @@
-module realm
+//module realm
+module github.com/Vintral/pocket-realm-test-access/game
 
 go 1.21.5
 
@@ -10,6 +11,8 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/Vintral/pocket-realm-test-access/models v0.0.0-20240608100744-7e43754634e7 // indirect
+	github.com/Vintral/pocket-realm-test-access/payloads v0.0.0-20240608101223-c30295234780 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
@@ -46,3 +49,7 @@ require (
 	gorm.io/driver/mysql v1.5.6
 	gorm.io/gorm v1.25.9
 )
+
+replace github.com/Vintral/pocket-realm-test-access/models => ../models
+
+replace github.com/Vintral/pocket-realm-test-access/payloads => ../payloads

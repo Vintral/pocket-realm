@@ -3,8 +3,9 @@ package social
 import (
 	"context"
 	"fmt"
-	"realm/models"
-	realmRedis "realm/redis"
+
+	realmRedis "github.com/Vintral/pocket-realm-test-access/game/redis"
+	"github.com/Vintral/pocket-realm-test-access/models"
 
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/sdk/trace"

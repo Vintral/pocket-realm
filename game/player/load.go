@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"realm/models"
-	"realm/utilities"
+
+	"github.com/Vintral/pocket-realm-test-access/game/utilities"
+	"github.com/Vintral/pocket-realm-test-access/models"
 )
 
 type LoadUserRequest struct {

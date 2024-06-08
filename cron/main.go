@@ -3,12 +3,13 @@ package main
 import (
 	"fmt"
 
-	realm "realm.com"
+	realmTest "github.com/Vintral/pocket-realm-test-access/test"
 )
 
 func main() {
-	fmt.Println("Hello World")
+	fmt.Println("Cron")
 
-	realm.Testing()
+	realmTest.Test()
+	//realm.Testing()
 	//fmt.Println(models)
 }

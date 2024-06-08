@@ -5,7 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	utils "realm/utilities"
+
+	utils "github.com/Vintral/pocket-realm-test-access/game/utilities"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"

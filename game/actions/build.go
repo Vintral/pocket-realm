@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"realm/models"
-	"realm/utilities"
 	"strconv"
+
+	"github.com/Vintral/pocket-realm-test-access/game/utilities"
+	"github.com/Vintral/pocket-realm-test-access/models"
 
 	"go.opentelemetry.io/otel/codes"
 )

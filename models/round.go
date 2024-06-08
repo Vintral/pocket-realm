@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"sync"
 
-	payloads "realm/payloads"
-	"realm/utilities"
 	"time"
+
+	"github.com/Vintral/pocket-realm-test-access/game/utilities"
+	"github.com/Vintral/pocket-realm-test-access/payloads"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"

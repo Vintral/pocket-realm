@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	payloads "realm/payloads"
-	"realm/utilities"
+	"github.com/Vintral/pocket-realm-test-access/game/utilities"
+	"github.com/Vintral/pocket-realm-test-access/payloads"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"

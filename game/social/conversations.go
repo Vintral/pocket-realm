@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"realm/models"
-	"realm/utilities"
+
+	"github.com/Vintral/pocket-realm-test-access/game/utilities"
+	"github.com/Vintral/pocket-realm-test-access/models"
 
 	"github.com/google/uuid"
 	attributes "go.opentelemetry.io/otel/attribute"

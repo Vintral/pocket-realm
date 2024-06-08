@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	utils "realm/utilities"
+	"github.com/Vintral/pocket-realm-test-access/game/utilities"
 )
 
 const timeOut = 10
@@ -44,8 +44,8 @@ func setupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, tr
 	}
 
 	// Set up resource.
-	OTEL_SERVICE := utils.GetEnv("OTEL_SERVICE", "default-service")
-	OTEL_VERSION := utils.GetEnv("OTEL_VERSION", "0.0.1")
+	OTEL_SERVICE := utilities.GetEnv("OTEL_SERVICE", "default-service")
+	OTEL_VERSION := utilities.GetEnv("OTEL_VERSION", "0.0.1")
 
 	fmt.Println("OTEL_SERVICE:", OTEL_SERVICE)
 	res, err := newResource(OTEL_SERVICE, OTEL_VERSION)
@@ -102,8 +102,8 @@ func newTraceProvider(res *resource.Resource, ctx context.Context) (*trace.Trace
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(time.Second*timeOut))
 	defer cancel()
 
-	OTEL_EXPORTER_HOST := utils.GetEnv("OTEL_EXPORTER_HOST", "127.0.0.1")
-	OTEL_EXPORTER_PORT := utils.GetEnv("OTEL_EXPORTER_PORT", "4317")
+	OTEL_EXPORTER_HOST := utilities.GetEnv("OTEL_EXPORTER_HOST", "127.0.0.1")
+	OTEL_EXPORTER_PORT := utilities.GetEnv("OTEL_EXPORTER_PORT", "4317")
 
 	conn, err := grpc.DialContext(ctx, OTEL_EXPORTER_HOST+":"+OTEL_EXPORTER_PORT,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),

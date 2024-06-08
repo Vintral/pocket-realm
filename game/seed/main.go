@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	models "realm/models"
 	"time"
+
+	models "github.com/Vintral/pocket-realm-test-access/models"
 
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"

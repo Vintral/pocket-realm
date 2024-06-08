@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"realm/models"
-	"realm/payloads"
-	"realm/utilities"
 	"strconv"
 	"time"
+
+	"github.com/Vintral/pocket-realm-test-access/game/utilities"
+	"github.com/Vintral/pocket-realm-test-access/models"
+	"github.com/Vintral/pocket-realm-test-access/payloads"
 
 	"go.opentelemetry.io/otel/attribute"
 )

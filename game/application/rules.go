@@ -2,7 +2,8 @@ package application
 
 import (
 	"fmt"
-	"realm/models"
+
+	"github.com/Vintral/pocket-realm-test-access/models"
 )
 
 func GetRules(user *models.User) {
