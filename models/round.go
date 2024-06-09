@@ -8,8 +8,8 @@ import (
 
 	"time"
 
+	"github.com/Vintral/pocket-realm/game/utilities"
 	"github.com/Vintral/pocket-realm/payloads"
-	"github.com/Vintral/pocket-realm/utilities"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
