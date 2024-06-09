@@ -3,13 +3,13 @@ module github.com/Vintral/pocket-realm/models
 go 1.21.5
 
 require (
-	github.com/Vintral/pocket-realm/game v0.0.0-20240608100238-697a714f2c8b
 	go.opentelemetry.io/otel v1.25.0
 	go.opentelemetry.io/otel/sdk v1.25.0
 )
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/Vintral/pocket-realm v0.0.0-20240609183057-7c924de04858 // indirect
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
