@@ -48,6 +48,5 @@ require (
 	gorm.io/gorm v1.25.9
 )
 
-replace github.com/Vintral/pocket-realm/models => ../models
-
-replace github.com/Vintral/pocket-realm/payloads => ../payloads
+// replace github.com/Vintral/pocket-realm/models => ../models
+// replace github.com/Vintral/pocket-realm/payloads => ../payloads
