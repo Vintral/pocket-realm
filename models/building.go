@@ -7,7 +7,6 @@ import (
 	"math"
 
 	utils "github.com/Vintral/pocket-realm/game/utilities"
-
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
