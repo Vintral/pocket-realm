@@ -1,9 +1,9 @@
 filippo.io/edwards25519 v1.1.0 h1:FNf4tywRC1HmFuKW5xopWpigGjJKiJSV0Cqo0cJWDaA=
 filippo.io/edwards25519 v1.1.0/go.mod h1:BxyFTGdWcka3PhytdK4V28tE5sGfRvvvRV7EaN4VDT4=
-github.com/Vintral/pocket-realm/game v0.0.0-20240608100238-697a714f2c8b h1:j1mZ0IFP9F/xJIGkkHm1Q7ZqSV7WwsVNu4RNHYk6Ggg=
-github.com/Vintral/pocket-realm/game v0.0.0-20240608100238-697a714f2c8b/go.mod h1:fw0ex1UxU+m4q5FTKU6IaCl/94RAViwYuGTWMvh8hKI=
-github.com/Vintral/pocket-realm/payloads v0.0.0-20240608101223-c30295234780 h1:eKgq3+6TYtx3EeqA0m3UJE6mADrfo12th7hYMt9qGyw=
-github.com/Vintral/pocket-realm/payloads v0.0.0-20240608101223-c30295234780/go.mod h1:cC4hz2ETjxctRCysmjk6z3DIHSodBwCXp+f80HE8kk4=
+github.com/Vintral/pocket-realm/game v0.0.0-20240609184944-ff595ba95a81 h1:m61w1kd54ytYVBgCAdbrDt5sN7lZMqC9hv/6dZmVR4c=
+github.com/Vintral/pocket-realm/game v0.0.0-20240609184944-ff595ba95a81/go.mod h1:hfr/OF51k9nOYikbt77GhJW+lG1jV7Ygj55TeM/Y+w4=
+github.com/Vintral/pocket-realm/payloads v0.0.0-20240609184944-ff595ba95a81 h1:Wix7U/TtGpBXGmrtY43DBzk5qL0JrsTjzlfre4vLMK4=
+github.com/Vintral/pocket-realm/payloads v0.0.0-20240609184944-ff595ba95a81/go.mod h1:oW9+MDvkxPo1tBiCmwKnuHnGZyJaci6c6yKEH1Sl/j0=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
