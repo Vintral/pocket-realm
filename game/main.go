@@ -12,12 +12,12 @@ import (
 
 	"github.com/Vintral/pocket-realm/game/actions"
 	"github.com/Vintral/pocket-realm/game/application"
+	"github.com/Vintral/pocket-realm/game/models"
+	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/game/player"
 	realmRedis "github.com/Vintral/pocket-realm/game/redis"
 	"github.com/Vintral/pocket-realm/game/social"
 	"github.com/Vintral/pocket-realm/game/utilities"
-	"github.com/Vintral/pocket-realm/models"
-	"github.com/Vintral/pocket-realm/payloads"
 
 	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"

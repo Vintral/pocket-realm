@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	models "github.com/Vintral/pocket-realm/models"
+	models "github.com/Vintral/pocket-realm/game/models"
 
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"

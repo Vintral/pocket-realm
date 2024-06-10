@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Vintral/pocket-realm/game/models"
 	"github.com/Vintral/pocket-realm/game/utilities"
-	"github.com/Vintral/pocket-realm/models"
 
 	"go.opentelemetry.io/otel/codes"
 )

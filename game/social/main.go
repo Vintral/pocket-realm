@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Vintral/pocket-realm/game/models"
 	realmRedis "github.com/Vintral/pocket-realm/game/redis"
-	"github.com/Vintral/pocket-realm/models"
 
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/sdk/trace"

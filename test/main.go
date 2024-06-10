@@ -12,5 +12,5 @@ func main() {
 }
 
 func Test() {
-	fmt.Println("Called Test")
+	fmt.Println("Called Local Test")
 }

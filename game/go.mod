@@ -4,7 +4,7 @@ module github.com/Vintral/pocket-realm/game
 go 1.21.5
 
 require (
-	github.com/Vintral/pocket-realm/models v0.0.0-20240608100744-7e43754634e7
+	github.com/Vintral/pocket-realm/game/models v0.0.0-20240608100744-7e43754634e7
 	github.com/Vintral/pocket-realm/payloads v0.0.0-20240608101223-c30295234780
 	go.opentelemetry.io/otel v1.25.0
 	go.opentelemetry.io/otel/sdk v1.25.0
@@ -48,5 +48,6 @@ require (
 	gorm.io/gorm v1.25.9
 )
 
-// replace github.com/Vintral/pocket-realm/models => ../models
+replace github.com/Vintral/pocket-realm/game => ./
+// replace github.com/Vintral/pocket-realm/game/models => ../models
 // replace github.com/Vintral/pocket-realm/payloads => ../payloads
