@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/game/utilities"
-	"github.com/Vintral/pocket-realm/payloads"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"

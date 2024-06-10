@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	realmTest "github.com/Vintral/pocket-realm/test"
+	models "github.com/Vintral/pocket-realm/game/models"
 	"github.com/go-co-op/gocron/v2"
 )
 
@@ -28,8 +28,6 @@ func _1_minute() {
 }
 
 func main() {
-	realmTest.Test()
-
 	scheduler, err := gocron.NewScheduler()
 	defer func() { _ = scheduler.Shutdown() }()
 
@@ -59,6 +57,8 @@ func main() {
 
 	fmt.Println("Starting up...")
 	scheduler.Start()
+
+	models.Testing()
 
 	for {
 	}

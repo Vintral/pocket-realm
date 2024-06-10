@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Vintral/pocket-realm/game/models"
+	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/game/utilities"
-	"github.com/Vintral/pocket-realm/models"
-	"github.com/Vintral/pocket-realm/payloads"
 
 	"go.opentelemetry.io/otel/attribute"
 )

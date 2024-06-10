@@ -4,8 +4,6 @@ module github.com/Vintral/pocket-realm/game
 go 1.21.5
 
 require (
-	github.com/Vintral/pocket-realm/game/models v0.0.0-20240608100744-7e43754634e7
-	github.com/Vintral/pocket-realm/payloads v0.0.0-20240608101223-c30295234780
 	go.opentelemetry.io/otel v1.25.0
 	go.opentelemetry.io/otel/sdk v1.25.0
 	google.golang.org/grpc v1.63.2
@@ -37,17 +35,17 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/joho/godotenv v1.5.1
 	github.com/redis/go-redis/v9 v9.5.1
-	github.com/uptrace/opentelemetry-go-extra/otelgorm v0.2.4 // indirect
+	github.com/uptrace/opentelemetry-go-extra/otelgorm v0.2.4
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.25.0
 	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.25.0
 	go.opentelemetry.io/otel/metric v1.25.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.25.0
 	go.opentelemetry.io/otel/trace v1.25.0
 	golang.org/x/net v0.24.0 // indirect
-	gorm.io/driver/mysql v1.5.6 // indirect
+	gorm.io/driver/mysql v1.5.6
 	gorm.io/gorm v1.25.9
 )
 
-replace github.com/Vintral/pocket-realm/game => ./
+// replace github.com/Vintral/pocket-realm/game => ./
 // replace github.com/Vintral/pocket-realm/game/models => ../models
-// replace github.com/Vintral/pocket-realm/payloads => ../payloads
+// replace github.com/Vintral/pocket-realm/game/payloads => ../payloads
