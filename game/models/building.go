@@ -8,6 +8,7 @@ import (
 
 	utils "github.com/Vintral/pocket-realm/game/utilities"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -183,29 +184,29 @@ func (building *Building) Build(ctx context.Context, user *User, energy uint) (f
 }
 
 func (building *Building) Dump() {
-	fmt.Println("=============================")
-	fmt.Println("ID:", building.ID)
-	fmt.Println("GUID:", building.GUID)
-	fmt.Println("Name:", building.Name)
-	fmt.Println("CostPoints:", building.CostPoints)
-	fmt.Println("CostGold:", building.CostGold)
-	fmt.Println("CostFood:", building.CostFood)
-	fmt.Println("CostWood:", building.CostWood)
-	fmt.Println("CostMetal:", building.CostMetal)
-	fmt.Println("CostStone:", building.CostStone)
-	fmt.Println("CostFaith:", building.CostFaith)
-	fmt.Println("CostMana:", building.CostMana)
-	fmt.Println("BonusField:", building.BonusField)
-	fmt.Println("BonusValue:", building.BonusValue)
-	fmt.Println("UpkeepGold:", building.UpkeepGold)
-	fmt.Println("UpkeepFood:", building.UpkeepFood)
-	fmt.Println("UpkeepWood:", building.UpkeepWood)
-	fmt.Println("UpkeepMetal:", building.UpkeepMetal)
-	fmt.Println("UpkeepStone:", building.UpkeepStone)
-	fmt.Println("UpkeepFaith:", building.UpkeepFaith)
-	fmt.Println("UpkeepMana:", building.UpkeepMana)
-	fmt.Println("Available:", building.Available)
-	fmt.Println("Buildable:", building.Buildable)
-	fmt.Println("SupportsPartial:", building.SupportsPartial)
-	fmt.Println("=============================")
+	log.Trace().Msg("=============================")
+	log.Trace().Msg("ID:" + fmt.Sprint(building.ID))
+	log.Trace().Msg("GUID:" + fmt.Sprint(building.GUID))
+	log.Trace().Msg("Name:" + building.Name)
+	log.Trace().Msg("CostPoints:" + fmt.Sprint(building.CostPoints))
+	log.Trace().Msg("CostGold:" + fmt.Sprint(building.CostGold))
+	log.Trace().Msg("CostFood:" + fmt.Sprint(building.CostFood))
+	log.Trace().Msg("CostWood:" + fmt.Sprint(building.CostWood))
+	log.Trace().Msg("CostMetal:" + fmt.Sprint(building.CostMetal))
+	log.Trace().Msg("CostStone:" + fmt.Sprint(building.CostStone))
+	log.Trace().Msg("CostFaith:" + fmt.Sprint(building.CostFaith))
+	log.Trace().Msg("CostMana:" + fmt.Sprint(building.CostMana))
+	log.Trace().Msg("BonusField:" + fmt.Sprint(building.BonusField))
+	log.Trace().Msg("BonusValue:" + fmt.Sprint(building.BonusValue))
+	log.Trace().Msg("UpkeepGold:" + fmt.Sprint(building.UpkeepGold))
+	log.Trace().Msg("UpkeepFood:" + fmt.Sprint(building.UpkeepFood))
+	log.Trace().Msg("UpkeepWood:" + fmt.Sprint(building.UpkeepWood))
+	log.Trace().Msg("UpkeepMetal:" + fmt.Sprint(building.UpkeepMetal))
+	log.Trace().Msg("UpkeepStone:" + fmt.Sprint(building.UpkeepStone))
+	log.Trace().Msg("UpkeepFaith:" + fmt.Sprint(building.UpkeepFaith))
+	log.Trace().Msg("UpkeepMana:" + fmt.Sprint(building.UpkeepMana))
+	log.Trace().Msg("Available:" + fmt.Sprint(building.Available))
+	log.Trace().Msg("Buildable:" + fmt.Sprint(building.Buildable))
+	log.Trace().Msg("SupportsPartial:" + fmt.Sprint(building.SupportsPartial))
+	log.Trace().Msg("=============================")
 }

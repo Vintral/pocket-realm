@@ -181,6 +181,27 @@ func (unit *Unit) Recruit(ctx context.Context, user *User, energy uint) (float64
 	return 0, err
 }
 
+func (unit *Unit) GetUpkeep(field string) uint {
+	switch field {
+	case "gold":
+		return unit.UpkeepGold
+	case "food":
+		return unit.UpkeepFood
+	case "wood":
+		return unit.UpkeepWood
+	case "stone":
+		return unit.UpkeepStone
+	case "metal":
+		return unit.UpkeepMetal
+	case "faith":
+		return unit.UpkeepFaith
+	case "mana":
+		return unit.UpkeepMana
+	}
+
+	return 0
+}
+
 func (unit *Unit) Dump() {
 	fmt.Println("=============================")
 	fmt.Println("ID:", unit.ID)

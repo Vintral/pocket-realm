@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"time"
 
 	"github.com/Vintral/pocket-realm/game/actions"
 	"github.com/Vintral/pocket-realm/game/application"
@@ -18,6 +20,10 @@ import (
 	realmRedis "github.com/Vintral/pocket-realm/game/redis"
 	"github.com/Vintral/pocket-realm/game/social"
 	"github.com/Vintral/pocket-realm/game/utilities"
+	"github.com/redis/go-redis/v9"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
@@ -30,6 +36,56 @@ func Testing() {
 	fmt.Println("HEYO")
 }
 
+var connectedUsersByRound map[int]map[int]*models.User
+var connectedUsers map[int]*models.User
+
+func refreshUser(id uint) {
+	delay := rand.Intn(5)
+	time.Sleep(time.Duration(delay) * time.Second)
+
+	if user, ok := connectedUsers[int(id)]; ok {
+		user.Refresh()
+	} else {
+		log.Warn().Int("userid", int(id)).Msg("User not connected")
+	}
+}
+
+func handleRoundUpdates(rdb *redis.Client) {
+	pubsub := rdb.Subscribe(context.Background(), "ROUND_UPDATE")
+	defer pubsub.Close()
+
+	tracer := traceProvider.Tracer("handle-round-updates")
+	for {
+		msg, err := pubsub.ReceiveMessage(context.Background())
+		if err != nil {
+			panic(err)
+		}
+
+		_, span := tracer.Start(context.Background(), "round-updated")
+
+		fmt.Println("RECEIVED MESSAGE :::", msg.Channel, msg.Payload)
+		round, err := strconv.Atoi(msg.Payload)
+		if err != nil {
+			panic(err)
+		}
+
+		if players, ok := connectedUsersByRound[round]; ok {
+			for _, p := range players {
+				go refreshUser(p.ID)
+
+				// fmt.Println("Send Payload to", p.ID)
+				// ctx := context.WithValue(context.Background(), utilities.KeyTraceProvider{}, traceProvider)
+				// ctx = context.WithValue(ctx, utilities.KeyUser{}, p)
+
+				// models.LoadRoundForUser(ctx)
+				// //player.Load(ctx)
+			}
+		}
+
+		span.End()
+	}
+}
+
 func main() {
 	//==============================//
 	//	Setup ENV variables					//
@@ -38,6 +94,11 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	setupLogs()
+
+	connectedUsersByRound = make(map[int]map[int]*models.User)
+	connectedUsers = make(map[int]*models.User)
 
 	var port = "3001"
 	if os.Getenv("DEPLOYED") == "1" {
@@ -106,6 +167,8 @@ func main() {
 	fmt.Println("Connected to Redis")
 	fmt.Println(redisClient)
 
+	go handleRoundUpdates(redisClient)
+
 	social.Initialize(tp)
 
 	//==============================//
@@ -141,7 +204,7 @@ func main() {
 
 		websocket, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			log.Println(err)
+			log.Warn().AnErr("Error Upgrading Websocket", err).Send()
 			return
 		}
 
@@ -160,6 +223,16 @@ func listen(conn *websocket.Conn) {
 	}
 	user.Connection = conn
 
+	if user.RoundID > 0 {
+		_, ok := connectedUsersByRound[user.RoundID]
+		if !ok {
+			connectedUsersByRound[user.RoundID] = make(map[int]*models.User)
+		}
+
+		connectedUsersByRound[user.RoundID][int(user.ID)] = user
+	}
+	connectedUsers[int(user.ID)] = user
+
 	for {
 		// read a message
 		_, messageContent, err := conn.ReadMessage()
@@ -171,6 +244,8 @@ func listen(conn *websocket.Conn) {
 				fmt.Println(err)
 			}
 
+			delete(connectedUsersByRound[user.RoundID], int(user.ID))
+			delete(connectedUsers, int(user.ID))
 			return
 		}
 
@@ -206,6 +281,8 @@ func listen(conn *websocket.Conn) {
 			social.GetConversations(ctx)
 		case "GET_MESSAGES":
 			social.GetMessages(ctx)
+		case "GET_EVENTS":
+			player.GetEvents(ctx)
 		case "SHOUT":
 			social.SendShout(ctx)
 		case "SHOUTS":
@@ -236,4 +313,15 @@ func listen(conn *websocket.Conn) {
 			fmt.Println("Unhandled Command:", payload.Type)
 		}
 	}
+}
+
+func setupLogs() {
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+
+	output := zerolog.ConsoleWriter{
+		Out:           os.Stderr,
+		FieldsExclude: []string{zerolog.TimestampFieldName},
+	}
+
+	log.Logger = log.Output(output).With().Logger()
 }

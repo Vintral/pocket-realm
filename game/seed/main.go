@@ -4,15 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	models "github.com/Vintral/pocket-realm/game/models"
+	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"
 )
 
 func main() {
+	setupLogs()
+
 	fmt.Println("Loading Environment")
 	err := godotenv.Load(".env")
 	if err != nil {
@@ -44,21 +50,33 @@ func main() {
 		panic(err)
 	}
 
-	dropTables(db)
-	runMigrations(db)
+	if len(os.Args) > 1 && os.Args[1] == "users" {
+		numUsers := 0
 
-	createRules(db)
-	createNews(db)
-	createUnits(db)
-	createBuildings(db)
-	createResources(db)
-	createItems(db)
-	createOverrides(db)
-	round := createRounds(db)
-	createUsers(db, round)
-	createUserTables(db, round)
-	createShouts(db)
-	createConversations(db)
+		if numUsers, err = strconv.Atoi(os.Args[2]); err != nil {
+			numUsers = 100
+		}
+
+		seedUsers(db, tp, numUsers)
+		log.Info().Msg("Done seeing users")
+	} else {
+		dropTables(db)
+		runMigrations(db)
+
+		createRules(db)
+		createNews(db)
+		createUnits(db)
+		createBuildings(db)
+		createResources(db)
+		createItems(db)
+		// createOverrides(db)
+		round := createRounds(db)
+		createUsers(db, round)
+		createUserTables(db, round)
+		createShouts(db)
+		createConversations(db)
+		createEvents(db, round)
+	}
 }
 
 func createUserTables(db *gorm.DB, round *models.Round) {
@@ -156,8 +174,12 @@ func createUserTables(db *gorm.DB, round *models.Round) {
 		RoundID:        1,
 		CharacterClass: "mage",
 		Energy:         int(round.EnergyMax),
-		Gold:           200,
-		Food:           200,
+		Gold:           10,
+		TickGold:       0,
+		Housing:        5,
+		Population:     5,
+		Food:           15,
+		TickFood:       0,
 		Wood:           200,
 		Metal:          200,
 		Faith:          200,
@@ -227,11 +249,29 @@ func createRounds(db *gorm.DB) *models.Round {
 	round := &models.Round{
 		EnergyMax:   250,
 		EnergyRegen: 10,
+		Tick:        1,
+		Ends:        time.Now().Add(14 * 24 * time.Hour),
+	}
+	db.Create(round)
+	ret := round
+
+	round = &models.Round{
+		EnergyMax:   250,
+		EnergyRegen: 10,
+		Tick:        10,
 		Ends:        time.Now().Add(14 * 24 * time.Hour),
 	}
 	db.Create(round)
 
-	return round
+	round = &models.Round{
+		EnergyMax:   250,
+		EnergyRegen: 10,
+		Tick:        10,
+		Ends:        time.Now().Add(-14 * 24 * time.Hour),
+	}
+	db.Create(round)
+
+	return ret
 }
 
 func createUsers(db *gorm.DB, round *models.Round) {
@@ -342,6 +382,26 @@ func createShouts(db *gorm.DB) {
 	})
 }
 
+func createEvents(db *gorm.DB, round *models.Round) {
+	fmt.Println("Seeding Events")
+
+	db.Create(&models.Event{
+		UserID: 1,
+		Round:  round.GUID,
+		Event:  "Test Event Round 1",
+	})
+	db.Create(&models.Event{
+		UserID: 1,
+		Round:  round.GUID,
+		Event:  "Test Event 2 Round 1",
+	})
+	db.Create(&models.Event{
+		UserID: 1,
+		Round:  uuid.Nil,
+		Event:  "Test Event Account",
+	})
+}
+
 func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE user_units")
 	db.Exec("DROP TABLE user_rounds")
@@ -362,6 +422,7 @@ func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE user_logs")
 	db.Exec("DROP TABLE conversations")
 	db.Exec("DROP TABLE messages")
+	db.Exec("DROP TABLE events")
 }
 
 func createConversations(db *gorm.DB) {
@@ -469,6 +530,7 @@ func createBuildings(db *gorm.DB) {
 	db.Create(&models.Building{Name: "wall", BonusField: "defense"})
 	db.Create(&models.Building{Name: "workshop", BonusField: "build_power"})
 	db.Create(&models.Building{Name: "mine", BonusField: "metal_tick"})
+	db.Create(&models.Building{Name: "house", BonusField: "housing"})
 
 	//================================//
 	// Building Defaults							//
@@ -550,6 +612,17 @@ func createBuildings(db *gorm.DB) {
 		Buildable:       true,
 		SupportsPartial: false,
 	})
+	db.Create(&models.RoundBuilding{
+		BuildingID:      8,
+		RoundID:         0,
+		CostWood:        5,
+		CostStone:       2,
+		CostPoints:      2,
+		BonusValue:      2,
+		Available:       true,
+		Buildable:       true,
+		SupportsPartial: false,
+	})
 }
 
 func createResources(db *gorm.DB) {
@@ -618,6 +691,7 @@ func createUnits(db *gorm.DB) {
 		Ranged:          false,
 		CostGold:        2,
 		CostPoints:      2,
+		CostFood:        2,
 		UpkeepGold:      1,
 		UpkeepFood:      1,
 		Available:       true,
@@ -636,6 +710,7 @@ func createUnits(db *gorm.DB) {
 		CostPoints:      5,
 		UpkeepGold:      2,
 		UpkeepFood:      1,
+		UpkeepWood:      1,
 		Available:       true,
 		Recruitable:     true,
 		SupportsPartial: false,
@@ -652,6 +727,7 @@ func createUnits(db *gorm.DB) {
 		CostPoints:      10,
 		UpkeepGold:      3,
 		UpkeepFood:      2,
+		UpkeepMetal:     2,
 		Available:       true,
 		Recruitable:     true,
 		SupportsPartial: false,

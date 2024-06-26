@@ -12,6 +12,8 @@ type UserRound struct {
 	Energy         int     `json:"energy"`
 	RecruitPower   float64 `json:"recruit_power"`
 	BuildPower     float64 `json:"build_power"`
+	Population     float64 `json:"population"`
+	Housing        float64 `json:"housing"`
 	Gold           float64 `json:"gold"`
 	TickGold       float64 `json:"tick_gold"`
 	Food           float64 `json:"food"`

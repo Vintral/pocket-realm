@@ -33,8 +33,16 @@ func RoundFloat(val float64, precision uint) float64 {
 	return math.Round(val*ratio-0.5) / ratio
 }
 
+type StartSpanOpts struct {
+	TracerName string
+}
+
+func StartSpanWithOpts(ctx context.Context, spanName string, opts *StartSpanOpts) (context.Context, span.Span) {
+	return ctx.Value(KeyTraceProvider{}).(*trace.TracerProvider).Tracer(opts.TracerName).Start(context.Background(), spanName)
+}
+
 func StartSpan(ctx context.Context, spanName string) (context.Context, span.Span) {
-	return ctx.Value(KeyTraceProvider{}).(*trace.TracerProvider).Tracer("realm-game").Start(context.Background(), spanName)
+	return StartSpanWithOpts(ctx, spanName, &StartSpanOpts{TracerName: "realm-game"})
 }
 
 func GetSpan(ctx context.Context) span.Span {

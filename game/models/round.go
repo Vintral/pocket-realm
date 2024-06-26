@@ -10,6 +10,7 @@ import (
 
 	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/game/utilities"
+	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -37,6 +38,7 @@ type Round struct {
 	Buildings        []*Building          `gorm:"-" json:"buildings"`
 	MapBuildings     map[string]*Building `gorm:"-" json:"-"`
 	MapBuildingsById map[uint]*Building   `gorm:"-" json:"-"`
+	Tick             uint                 `gorm:"default:5" json:"tick"`
 }
 
 func (round *Round) BeforeCreate(tx *gorm.DB) (err error) {
@@ -45,7 +47,7 @@ func (round *Round) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func (round *Round) AfterFind(tx *gorm.DB) (err error) {
-	fmt.Println("Round: AfterFind")
+	log.Trace().Msg("Round: AfterFind")
 
 	ctx, sp := Tracer.Start(tx.Statement.Context, "after-find")
 	defer sp.End()
@@ -64,7 +66,7 @@ func (round *Round) AfterFind(tx *gorm.DB) (err error) {
 func (round *Round) loadBuildings(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	fmt.Println("loadBuildings")
+	log.Info().Msg("loadBuildings")
 
 	db.WithContext(ctx).Raw(`
 		SELECT 
@@ -96,9 +98,14 @@ func (round *Round) loadBuildings(ctx context.Context, wg *sync.WaitGroup) {
 	round.MapBuildings = make(map[string]*Building)
 	round.MapBuildingsById = make(map[uint]*Building)
 	for _, building := range round.Buildings {
-		fmt.Println("Saved:", building.Name)
+		log.Debug().
+			Str("guid", building.GUID.String()).
+			Int("id", int(building.ID)).
+			Msg("Saved: " + building.Name)
+
 		round.MapBuildings[building.GUID.String()] = building
 		round.MapBuildingsById[building.ID] = building
+
 		building.Dump()
 	}
 }
@@ -106,7 +113,7 @@ func (round *Round) loadBuildings(ctx context.Context, wg *sync.WaitGroup) {
 func (round *Round) loadUnits(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	fmt.Println("loadUnits")
+	log.Info().Msg("loadUnits")
 
 	db.WithContext(ctx).Raw(`
 		SELECT 
@@ -137,17 +144,20 @@ func (round *Round) loadUnits(ctx context.Context, wg *sync.WaitGroup) {
 	round.MapUnits = make(map[string]*Unit)
 	round.MapUnitsById = make(map[uint]*Unit)
 	for _, unit := range round.Units {
-		fmt.Println("Saved:", unit.Name, "    ::", unit.ID)
+		log.Debug().
+			Str("guid", unit.GUID.String()).
+			Int("id", int(unit.ID)).
+			Msg("Saved: " + unit.Name)
+
 		round.MapUnits[unit.GUID.String()] = unit
 		round.MapUnitsById[unit.ID] = unit
-		//r.Dump()
 	}
 }
 
 func (round *Round) loadResources(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	fmt.Println("loadResources")
+	log.Info().Msg("loadResources")
 
 	db.WithContext(ctx).Raw(`
 		SELECT 
@@ -174,7 +184,11 @@ func (round *Round) loadResources(ctx context.Context, wg *sync.WaitGroup) {
 
 	round.MapResources = make(map[string]*Resource)
 	for _, r := range round.Resources {
-		fmt.Println("Saved:", r.Name)
+		log.Debug().
+			Str("guid", r.GUID.String()).
+			Int("id", int(r.ID)).
+			Msg("Saved: " + r.Name)
+
 		round.MapResources[r.GUID.String()] = r
 	}
 }
@@ -204,7 +218,7 @@ func (round *Round) Load(packet []byte) ([]byte, error) {
 }
 
 func (round *Round) GetResourceByGuid(guid string) *Resource {
-	fmt.Println("GetResourceByGuid:", guid)
+	log.Debug().Msg("GetResourceByGuid:" + guid)
 
 	if resource, ok := round.MapResources[guid]; ok {
 		return resource
@@ -214,7 +228,7 @@ func (round *Round) GetResourceByGuid(guid string) *Resource {
 }
 
 func (round *Round) GetUnitByGuid(guid string) *Unit {
-	fmt.Println("GetUnitByGuid:", guid)
+	log.Debug().Msg("GetUnitByGuid:" + guid)
 
 	if unit, ok := round.MapUnits[guid]; ok {
 		return unit
@@ -223,8 +237,18 @@ func (round *Round) GetUnitByGuid(guid string) *Unit {
 	return nil
 }
 
+func (round *Round) GetUnitById(id uint) *Unit {
+	log.Debug().Msg("GetUnitById:" + fmt.Sprint(id))
+
+	if unit, ok := round.MapUnitsById[id]; ok {
+		return unit
+	}
+
+	return nil
+}
+
 func (round *Round) GetBuildingByGuid(guid string) *Building {
-	fmt.Println("GetBuildingByGuid:", guid)
+	log.Debug().Msg("GetBuildingByGuid:" + guid)
 
 	if building, ok := round.MapBuildings[guid]; ok {
 		return building
@@ -249,7 +273,7 @@ func LoadRoundById(ctx context.Context, roundID int) (*Round, error) {
 		return r, nil
 	}
 
-	fmt.Println("Have to load:", roundID)
+	log.Info().Int("round_id", roundID).Msg("Loading Round")
 
 	var round Round
 	if err := db.WithContext(ctx).Where("id = ?", roundID).Find(&round).Error; err != nil {
@@ -258,9 +282,10 @@ func LoadRoundById(ctx context.Context, roundID int) (*Round, error) {
 		return nil, err
 	}
 
-	fmt.Println(round)
+	log.Debug().Any("round", round).Send()
 
 	roundsById[roundID] = &round
+	rounds[round.GUID] = &round
 	return &round, nil
 }
 
@@ -270,7 +295,7 @@ func LoadRoundByGuid(ctx context.Context, guid uuid.UUID) (*Round, error) {
 		return r, nil
 	}
 
-	fmt.Println("Have to load:", guid)
+	log.Info().Msg("Loading Round: " + guid.String())
 
 	var round Round
 	if err := db.WithContext(ctx).Where("guid = ?", guid).Find(&round).Error; err != nil {
@@ -279,7 +304,10 @@ func LoadRoundByGuid(ctx context.Context, guid uuid.UUID) (*Round, error) {
 		return nil, err
 	}
 
+	log.Debug().Any("round", round).Send()
+
 	rounds[guid] = &round
+	roundsById[int(round.ID)] = &round
 	return &round, nil
 }
 
@@ -302,4 +330,38 @@ func LoadRoundForUser(base context.Context) {
 	} else {
 		user.SendError(SendErrorParams{Context: &ctx, Type: "round", Message: "round-0"})
 	}
+}
+
+var activeRounds []*Round
+
+func ResetActiveRounds(baseContext context.Context) {
+	_, span := Tracer.Start(baseContext, "reset-active-rounds")
+	defer span.End()
+
+	activeRounds = nil
+}
+
+func GetActiveRounds(baseContext context.Context, tick int) []*Round {
+	if activeRounds != nil {
+		log.Debug().Msg("Re-using rounds")
+	} else {
+		ctx, span := Tracer.Start(baseContext, "get-active-rounds")
+		defer span.End()
+
+		if err := db.WithContext(ctx).Model(&Round{}).Where("ends > ?", time.Now()).Find(&activeRounds).Error; err != nil {
+			log.Warn().Err(err).Msg("Error loading rounds")
+			return nil
+		}
+	}
+
+	var ret []*Round
+	for _, r := range activeRounds {
+		log.Debug().Msg(fmt.Sprintf("%d - %d = %t", r.Tick, tick, tick%int(r.Tick) == 0))
+
+		if tick%int(r.Tick) == 0 {
+			ret = append(ret, r)
+		}
+	}
+
+	return ret
 }

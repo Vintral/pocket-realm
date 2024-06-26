@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	provider "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
@@ -17,7 +18,7 @@ var db *gorm.DB
 var Tracer trace.Tracer
 
 func SetTracerProvider(t *provider.TracerProvider) {
-	fmt.Println("SetTracerProvider")
+	log.Info().Msg("SetTracerProvider")
 	Tracer = t.Tracer("game-server")
 }
 
@@ -42,8 +43,7 @@ func Database(retry bool) (*gorm.DB, error) {
 	})
 	if err != nil {
 		if retry {
-			fmt.Println(err)
-			panic("Failed to connect to database @ " + DB_HOST + ":" + DB_PORT)
+			log.Panic().Err(err).Msg("Failed to connect to database @ " + DB_HOST + ":" + DB_PORT)
 		} else {
 			time.Sleep(3 * time.Second)
 			return Database(true)
@@ -93,6 +93,7 @@ func RunMigrations(db *gorm.DB) {
 		&RoundBuilding{},
 		&Conversation{},
 		&Message{},
+		&Event{},
 	)
 	fmt.Println("Ran Migrations")
 }
