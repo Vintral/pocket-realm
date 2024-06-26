@@ -165,10 +165,6 @@ func (user *User) updateTickField(field string, val float64) {
 }
 
 func (user *User) updateTicks(ctx context.Context) {
-	_, span := Tracer.Start(ctx, "user-update-ticks")
-	defer span.End()
-
-	fmt.Println("updateTicks")
 	user.resetTicks()
 
 	log.Warn().Msg("Population: " + fmt.Sprint(user.RoundData.Population))
@@ -178,8 +174,6 @@ func (user *User) updateTicks(ctx context.Context) {
 
 		baseUnit := user.Round.MapUnitsById[unit.UnitID]
 		quantity := math.Floor(unit.Quantity)
-		fmt.Println("Upkeep: " + fmt.Sprint(baseUnit.UpkeepGold))
-		fmt.Println("Quantity: " + fmt.Sprint(quantity))
 
 		if quantity > 0 {
 			user.RoundData.TickFaith -= utilities.RoundFloat(quantity*float64(baseUnit.UpkeepFaith), 2)
@@ -190,8 +184,6 @@ func (user *User) updateTicks(ctx context.Context) {
 			user.RoundData.TickStone -= utilities.RoundFloat(quantity*float64(baseUnit.UpkeepStone), 2)
 			user.RoundData.TickWood -= utilities.RoundFloat(quantity*float64(baseUnit.UpkeepWood), 2)
 		}
-
-		fmt.Println("Current Gold Tick(units): " + fmt.Sprint(user.RoundData.TickGold))
 	}
 
 	for _, building := range user.Buildings {
@@ -203,7 +195,6 @@ func (user *User) updateTicks(ctx context.Context) {
 			user.updateTickField(baseBuilding.BonusField, val)
 
 			log.Warn().Msg("Field: " + baseBuilding.BonusField)
-			fmt.Println("Current Gold Tick(buildings): " + fmt.Sprint(user.RoundData.TickGold))
 
 			user.RoundData.TickFaith -= utilities.RoundFloat(quantity*float64(baseBuilding.UpkeepFaith), 2)
 			user.RoundData.TickFood -= utilities.RoundFloat(quantity*float64(baseBuilding.UpkeepFood), 2)
@@ -213,11 +204,7 @@ func (user *User) updateTicks(ctx context.Context) {
 			user.RoundData.TickStone -= utilities.RoundFloat(quantity*float64(baseBuilding.UpkeepStone), 2)
 			user.RoundData.TickWood -= utilities.RoundFloat(quantity*float64(baseBuilding.UpkeepWood), 2)
 		}
-
-		fmt.Println("Current Gold Tick(buildings): " + fmt.Sprint(user.RoundData.TickGold))
 	}
-
-	fmt.Println("Tick Gold:::", user.RoundData.TickGold)
 }
 
 func (user *User) UpdateRound(ctx context.Context, wg *sync.WaitGroup) bool {

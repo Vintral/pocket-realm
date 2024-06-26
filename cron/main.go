@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Vintral/pocket-realm/game/models"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -49,6 +50,15 @@ func getBankruptQuery(field string) string {
 	return sb.String()
 }
 
+func dealWithBankruptUser(ctx context.Context, field string, roundid uint, userid int) {
+	var userModel *models.User
+	user := userModel.LoadForRound(userid, int(roundid))
+
+	if ok := user.ProcessBankruptcy(ctx, field); !ok {
+		log.Warn().Uint("roundid", roundid).Uint("userid", user.ID).Str("field", field).Msg("Error processing Bankruptcy")
+	}
+}
+
 func handleBankruptcies(baseContext context.Context, roundid uint, field string) {
 	var sb strings.Builder
 	sb.WriteString("handle-bankruptcies-")
@@ -67,14 +77,15 @@ func handleBankruptcies(baseContext context.Context, roundid uint, field string)
 		Str("type", field).
 		Msg("Users going bankrupt: " + fmt.Sprint(len(userIDs)) + " ::: " + field)
 
+	wg := new(sync.WaitGroup)
+	wg.Add(len(userIDs))
 	for _, u := range userIDs {
-		var userModel *models.User
-		user := userModel.LoadForRound(u, int(roundid))
-
-		if ok := user.ProcessBankruptcy(ctx, field); !ok {
-			log.Warn().Uint("roundid", roundid).Uint("userid", user.ID).Str("field", field).Msg("Error processing Bankruptcy")
-		}
+		go func() {
+			dealWithBankruptUser(ctx, field, roundid, u)
+			wg.Done()
+		}()
 	}
+	wg.Wait()
 }
 
 func processField(baseContext context.Context, roundid uint, field string, wg *sync.WaitGroup) {
