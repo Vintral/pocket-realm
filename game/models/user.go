@@ -451,14 +451,14 @@ func (user *User) Log(message string, round uint) {
 func (user *User) LogEvent(eventText string, round uuid.UUID) {
 	log.Info().Msg("LogEvent: " + eventText)
 
-	// ctx, span := Tracer.Start(context.Background(), "log-event")
-	// defer span.End()
+	ctx, span := Tracer.Start(context.Background(), "log-event")
+	defer span.End()
 
-	// event := Event{Event: eventText, Round: round, UserID: user.ID, Seen: false}
+	event := Event{Event: eventText, Round: round, UserID: user.ID, Seen: false}
 
-	// if err := db.WithContext(ctx).Save(&event).Error; err != nil {
-	// 	log.Error().AnErr("Error saving event", err).Msg("Error saving event")
-	// }
+	if err := db.WithContext(ctx).Save(&event).Error; err != nil {
+		log.Error().AnErr("Error saving event", err).Msg("Error saving event")
+	}
 }
 
 func (user *User) getField(field string) int {
