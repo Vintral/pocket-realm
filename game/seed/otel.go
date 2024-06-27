@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -83,11 +83,14 @@ func setupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, tr
 }
 
 func newResource(serviceName, serviceVersion string) (*resource.Resource, error) {
-	return resource.Merge(resource.Default(),
-		resource.NewWithAttributes(semconv.SchemaURL,
-			semconv.ServiceName(serviceName),
-			semconv.ServiceVersion(serviceVersion),
-		))
+	return resource.New(
+		context.Background(),
+		resource.WithContainer(),
+		resource.WithAttributes(
+			attribute.String("service.name", serviceName),
+			attribute.String("service.version", serviceVersion),
+		),
+	)
 }
 
 func newPropagator() propagation.TextMapPropagator {

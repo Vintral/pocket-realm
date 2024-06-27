@@ -44,7 +44,7 @@ func (picker *Picker) Choose() uint {
 	for _, i := range picker.Choices {
 		log.Debug().Msg("Choice " + fmt.Sprint(choice) + " ::: " + fmt.Sprint(i.Weight) + "(" + fmt.Sprint(i.Item) + ")")
 		if choice < i.Weight {
-			log.Debug().Msg("Picked " + fmt.Sprint(i.Item))
+			log.Debug().Msg("Picked! " + fmt.Sprint(i.Item))
 			return i.Item
 		}
 

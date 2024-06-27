@@ -134,7 +134,8 @@ func (user *User) resetTicks() {
 }
 
 func (user *User) updateTickField(field string, val float64) {
-	fmt.Println("updateTickField: " + field + " -- " + fmt.Sprint(val))
+	log.Trace().Msg("updateTickField: " + field + " -- " + fmt.Sprint(val))
+
 	switch field {
 	case "build_power":
 		user.RoundData.BuildPower += val
@@ -159,7 +160,7 @@ func (user *User) updateTickField(field string, val float64) {
 	case "housing":
 		user.RoundData.Housing += val
 	default:
-		fmt.Println("Invalid Bonus Field:", field)
+		log.Warn().Msg("Invalid Bonus Field:" + field)
 		//panic("INVALID BONUS FIELD")
 	}
 }
@@ -167,7 +168,7 @@ func (user *User) updateTickField(field string, val float64) {
 func (user *User) updateTicks(ctx context.Context) {
 	user.resetTicks()
 
-	log.Warn().Msg("Population: " + fmt.Sprint(user.RoundData.Population))
+	//log.Warn().Msg("Population: " + fmt.Sprint(user.RoundData.Population))
 	user.RoundData.TickGold = user.RoundData.Population
 
 	for _, unit := range user.Units {
@@ -193,8 +194,6 @@ func (user *User) updateTicks(ctx context.Context) {
 		if quantity > 0 {
 			val := utilities.RoundFloat(math.Floor(building.Quantity*float64(baseBuilding.BonusValue)), 2)
 			user.updateTickField(baseBuilding.BonusField, val)
-
-			log.Warn().Msg("Field: " + baseBuilding.BonusField)
 
 			user.RoundData.TickFaith -= utilities.RoundFloat(quantity*float64(baseBuilding.UpkeepFaith), 2)
 			user.RoundData.TickFood -= utilities.RoundFloat(quantity*float64(baseBuilding.UpkeepFood), 2)
@@ -266,7 +265,9 @@ func (user *User) loadRound(ctx context.Context, wg *sync.WaitGroup) {
 	defer span.End()
 	defer wg.Done()
 
+	log.Warn().Msg("MetalTick Before: " + fmt.Sprint(user.RoundData.TickMetal))
 	db.WithContext(ctx).Where("user_id = ? and round_id = ?", user.ID, getRound(user)).Find(&user.RoundData)
+	log.Warn().Msg("MetalTick After: " + fmt.Sprint(user.RoundData.TickMetal))
 }
 
 func (user *User) loadBuildings(ctx context.Context, wg *sync.WaitGroup) {
@@ -338,18 +339,13 @@ func (user *User) Dump() {
 	fmt.Println("Energy:", user.RoundData.Energy)
 	fmt.Println("RecruitPower:", user.RoundData.RecruitPower)
 	fmt.Println("BuildPower:", user.RoundData.BuildPower)
-	fmt.Println("Gold:", user.RoundData.Gold)
-	fmt.Println("GoldTick:", user.RoundData.TickGold)
-	fmt.Println("Food:", user.RoundData.Food)
-	fmt.Println("FoodTick:", user.RoundData.TickFood)
-	fmt.Println("Wood:", user.RoundData.Wood)
-	fmt.Println("WoodTick:", user.RoundData.TickWood)
-	fmt.Println("Faith:", user.RoundData.Faith)
-	fmt.Println("FaithTick:", user.RoundData.TickFaith)
-	fmt.Println("Stone:", user.RoundData.Stone)
-	fmt.Println("StoneTick:", user.RoundData.TickStone)
-	fmt.Println("Mana:", user.RoundData.Mana)
-	fmt.Println("ManaTick:", user.RoundData.TickMana)
+	log.Warn().Float64("have", user.RoundData.Gold).Float64("tick", user.RoundData.TickGold).Msg("gold")
+	log.Warn().Float64("have", user.RoundData.Food).Float64("tick", user.RoundData.TickFood).Msg("food")
+	log.Warn().Float64("have", user.RoundData.Wood).Float64("tick", user.RoundData.TickWood).Msg("wood")
+	log.Warn().Float64("have", user.RoundData.Metal).Float64("tick", user.RoundData.TickMetal).Msg("metal")
+	log.Warn().Float64("have", user.RoundData.Faith).Float64("tick", user.RoundData.TickFaith).Msg("faith")
+	log.Warn().Float64("have", user.RoundData.Stone).Float64("tick", user.RoundData.TickStone).Msg("stone")
+	log.Warn().Float64("have", user.RoundData.Mana).Float64("tick", user.RoundData.TickMana).Msg("mana")
 
 	fmt.Println("============UNITS============")
 	for i := 0; i < len(user.Units); i++ {
@@ -455,14 +451,14 @@ func (user *User) Log(message string, round uint) {
 func (user *User) LogEvent(eventText string, round uuid.UUID) {
 	log.Info().Msg("LogEvent: " + eventText)
 
-	ctx, span := Tracer.Start(context.Background(), "log-event")
-	defer span.End()
+	// ctx, span := Tracer.Start(context.Background(), "log-event")
+	// defer span.End()
 
-	event := Event{Event: eventText, Round: round, UserID: user.ID, Seen: false}
+	// event := Event{Event: eventText, Round: round, UserID: user.ID, Seen: false}
 
-	if err := db.WithContext(ctx).Save(&event).Error; err != nil {
-		log.Error().AnErr("Error saving event", err).Msg("Error saving event")
-	}
+	// if err := db.WithContext(ctx).Save(&event).Error; err != nil {
+	// 	log.Error().AnErr("Error saving event", err).Msg("Error saving event")
+	// }
 }
 
 func (user *User) getField(field string) int {
@@ -527,11 +523,15 @@ func (user *User) getTick(field string) int {
 }
 
 func (user *User) getDeficit(field string) int {
-	return user.getField(field) + user.getTick(field)
+	have := user.getField(field)
+	tick := user.getTick(field)
+	log.Warn().Str("field", field).Int("have", have).Int("tick", tick).Msg("getDeficit: " + fmt.Sprint(have+tick))
+
+	return have + tick
 }
 
 func (user *User) ProcessBankruptcy(ctx context.Context, field string) bool {
-	log.Info().Msg("ProcessBankruptcy: " + field)
+	log.Warn().Msg("ProcessBankruptcy: " + field)
 
 	picker := utilities.Picker{}
 	for _, u := range user.Units {
@@ -539,7 +539,7 @@ func (user *User) ProcessBankruptcy(ctx context.Context, field string) bool {
 		picker.Add(unit.GetUpkeep(field)*uint(u.Quantity), u.UnitID)
 	}
 
-	if user.getDeficit(field) == 0 {
+	if user.getDeficit(field) >= 0 {
 		user.zeroField(field)
 		user.updateUnits(ctx, nil)
 		user.UpdateRound(ctx, nil)
@@ -547,18 +547,25 @@ func (user *User) ProcessBankruptcy(ctx context.Context, field string) bool {
 		return true
 	}
 
+	user.Dump()
+
 	choice := picker.Choose()
 	for _, u := range user.Units {
-		log.Warn().Msg("Choice " + fmt.Sprint(choice) + " ::: " + fmt.Sprint(u.UnitID))
+		log.Trace().Msg("Choice " + fmt.Sprint(choice) + " ::: " + fmt.Sprint(u.UnitID))
 		if u.UnitID == choice {
 			unit := user.Round.GetUnitById(u.UnitID)
 			deficit := user.getDeficit(field)
 
-			fmt.Print(-float64(deficit) / float64(unit.GetUpkeep(field)))
 			count := int(math.Ceil(-float64(deficit) / float64(unit.GetUpkeep(field))))
-			log.Info().Msg("Deficit: " + fmt.Sprint(deficit))
-			log.Info().Msg("Unit Upkeep: " + fmt.Sprint(unit.GetUpkeep(field)))
-			log.Info().Msg("Get rid of " + fmt.Sprint(count) + " " + unit.Name)
+			log.Warn().Msg("Deficit: " + fmt.Sprint(deficit))
+			fmt.Println(-float64(deficit) / float64(unit.GetUpkeep(field)))
+			log.Warn().Msg("Unit Upkeep: " + fmt.Sprint(unit.GetUpkeep(field)))
+
+			if count == 0 {
+				log.Panic().Msg("Count is 0")
+			}
+
+			log.Warn().Msg("Get rid of " + fmt.Sprint(count) + " " + unit.Name)
 
 			taken := user.takeUnit(ctx, int(u.UnitID), count)
 			if taken {

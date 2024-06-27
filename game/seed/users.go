@@ -93,11 +93,11 @@ func createUser(id int, wg *sync.WaitGroup) {
 
 		fmt.Println(b.ID)
 		if b.ID == 1 {
-			quantity *= 8
+			quantity *= 5.5
 		}
 
 		if b.ID == 8 {
-			quantity *= 3
+			quantity *= 2.7
 		}
 
 		db.Create(&models.UserBuilding{
