@@ -20,7 +20,7 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/Vintral/pocket-realm/game v0.0.0-20240626011155-37e5d561f08e
+	github.com/Vintral/pocket-realm/game v0.0.0-20240627000615-7a41a1e99d67
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect

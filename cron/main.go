@@ -67,12 +67,12 @@ func handleBankruptcies(baseContext context.Context, roundid uint, field string)
 	ctx, span := tracer.Start(baseContext, sb.String())
 	defer span.End()
 
-	log.Warn().Msg(getBankruptQuery(field))
+	log.Debug().Msg(getBankruptQuery(field))
 
 	var userIDs []int
 	db.WithContext(ctx).Model(&models.UserRound{}).Where(getBankruptQuery(field), roundid).Select("user_id").Scan(&userIDs)
 
-	log.Info().
+	log.Warn().
 		Int("bankrupt_users", len(userIDs)).
 		Str("type", field).
 		Msg("Users going bankrupt: " + fmt.Sprint(len(userIDs)) + " ::: " + field)
@@ -80,15 +80,17 @@ func handleBankruptcies(baseContext context.Context, roundid uint, field string)
 	wg := new(sync.WaitGroup)
 	wg.Add(len(userIDs))
 	for _, u := range userIDs {
-		go func() {
-			dealWithBankruptUser(ctx, field, roundid, u)
+		go func(userid int) {
+			dealWithBankruptUser(ctx, field, roundid, userid)
 			wg.Done()
-		}()
+		}(u)
 	}
 	wg.Wait()
 }
 
 func processField(baseContext context.Context, roundid uint, field string, wg *sync.WaitGroup) {
+	log.Warn().Msg("processField: " + field)
+
 	ctx, span := tracer.Start(baseContext, "process-field-"+field)
 	defer span.End()
 	if wg != nil {
@@ -118,9 +120,9 @@ func growPopulations(baseContext context.Context, roundid uint) {
 
 	var userIDs []int
 	db.WithContext(ctx).Table("user_rounds").Select("user_id").Where("population < housing AND round_id = ?", roundid).Scan(&userIDs)
-	db.WithContext(ctx).Exec("UPDATE user_rounds SET population = population + 1, tick_gold = population WHERE population < housing AND round_id = ?", roundid)
+	db.WithContext(ctx).Exec("UPDATE user_rounds SET population = population + 1, tick_gold = tick_gold + 1 WHERE population < housing AND round_id = ?", roundid)
 
-	log.Warn().Msg("User Count to update:" + fmt.Sprint(len(userIDs)))
+	log.Warn().Msg("User Count with population updates(" + fmt.Sprint(roundid) + "):" + fmt.Sprint(len(userIDs)))
 	// var userModel *models.User
 	// for _, u := range userIDs {
 	// 	go func(uid int) {
@@ -163,14 +165,8 @@ func process() {
 	defer log.Warn().Msg("Finished Process")
 	minute := time.Now().Minute()
 
-	var sb strings.Builder
-	sb.WriteString("run-cron-")
-	sb.WriteString(fmt.Sprint(minute))
-
-	log.Info().Msg("Span Name: " + sb.String())
-	ctx, span := tracer.Start(context.Background(), sb.String())
-	// defer span.End()
-	span.End()
+	ctx, span := tracer.Start(context.Background(), "process")
+	defer span.End()
 
 	if time.Now().Hour() == 0 && time.Now().Minute() == 0 {
 		fmt.Println("Reseting active rounds")
@@ -211,7 +207,7 @@ func setupDbase() {
 }
 
 func setupLogs() {
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	zerolog.SetGlobalLevel(zerolog.WarnLevel)
 
 	output := zerolog.ConsoleWriter{
 		Out:           os.Stderr,
@@ -295,7 +291,7 @@ func main() {
 	scheduler.Start()
 
 	//models.Testing()
-	process()
+	//process()
 
 	// var u *models.User
 	// testing := u.LoadForRound(1, 1)

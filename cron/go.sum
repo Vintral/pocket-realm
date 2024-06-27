@@ -4,6 +4,10 @@ github.com/Vintral/pocket-realm/game v0.0.0-20240610144033-abb9f8ab5f5a h1:gBuw1
 github.com/Vintral/pocket-realm/game v0.0.0-20240610144033-abb9f8ab5f5a/go.mod h1:NtaZMcWG7AThHZRcaj1XVfH/t53aOgiO+qhcJ4S4QXA=
 github.com/Vintral/pocket-realm/game v0.0.0-20240626011155-37e5d561f08e h1:itWL6jdAKN4WUhelmL4/zhXelAeLJOKkFSCgkxoBIjc=
 github.com/Vintral/pocket-realm/game v0.0.0-20240626011155-37e5d561f08e/go.mod h1:p83Yg4iyEWOHobt15BuMFRe1mn5xZicfAekxbJCGh08=
+github.com/Vintral/pocket-realm/game v0.0.0-20240626021355-d08824553a09 h1:f/AQHpx+sEay5OW0QPpcagxUVu4a4ygDn4FMaudc/X4=
+github.com/Vintral/pocket-realm/game v0.0.0-20240626021355-d08824553a09/go.mod h1:p83Yg4iyEWOHobt15BuMFRe1mn5xZicfAekxbJCGh08=
+github.com/Vintral/pocket-realm/game v0.0.0-20240627000615-7a41a1e99d67 h1:/M95nGxu7iyYZBFFyOWRjR1H3XrlFhJ7Focv0Pr/iFI=
+github.com/Vintral/pocket-realm/game v0.0.0-20240627000615-7a41a1e99d67/go.mod h1:X5uxgR8zzodqsphRGxnYa3RHI9PVd6adgD8gvWODf6U=
 github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK343L8=
 github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
