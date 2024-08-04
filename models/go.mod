@@ -1,4 +1,4 @@
-module realm/models
+module github.com/Vintral/pocket-realm/models
 
 go 1.22
 
@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/Vintral/pocket-realm v0.0.0-20240627041512-b716c034b649 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

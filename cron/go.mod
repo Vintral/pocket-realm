@@ -1,4 +1,4 @@
-module realm/cron
+module github.com/Vintral/pocket-realm/cron
 
 go 1.22
 

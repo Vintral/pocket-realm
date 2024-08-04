@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/Vintral/pocket-realm/game/payloads"
-	realmRedis "github.com/Vintral/pocket-realm/game/redis"
 	"github.com/Vintral/pocket-realm/game/utilities"
 	"github.com/rs/zerolog/log"
 
@@ -369,11 +368,6 @@ func (user *User) Dump() {
 func (user *User) UpdateRank(ctx context.Context) {
 	log.Trace().Msg("Update Rank")
 
-	rdb, err := realmRedis.Instance(nil)
-	if err != nil {
-		log.Warn().AnErr("error", err).Msg("Error updating score for: " + fmt.Sprint(user.ID))
-		return
-	}
 }
 
 func (user *User) sendUserData() {

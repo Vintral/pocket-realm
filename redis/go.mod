@@ -1,4 +1,4 @@
-module realm/redis
+module github.com/Vintral/pocket-realm/redis
 
 go 1.22
 
