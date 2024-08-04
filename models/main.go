@@ -1,7 +1,9 @@
-package main
+package models
 
 import (
-	fmt
+	"fmt"
 )
 
-fmt.Println("Loaded Models");
+func main() {
+	fmt.Println("Loaded Models")
+}

@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/Vintral/pocket-realm/game/models"
+	"github.com/Vintral/pocket-realm/models"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/sdk/trace"
 	span "go.opentelemetry.io/otel/trace"

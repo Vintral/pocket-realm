@@ -3,7 +3,7 @@ package application
 import (
 	"fmt"
 
-	"github.com/Vintral/pocket-realm/game/models"
+	"github.com/Vintral/pocket-realm/models"
 )
 
 func GetNews(user *models.User) {

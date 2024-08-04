@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Vintral/pocket-realm/game/models"
+	"github.com/Vintral/pocket-realm/models"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"

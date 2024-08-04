@@ -14,11 +14,11 @@ import (
 
 	"github.com/Vintral/pocket-realm/game/actions"
 	"github.com/Vintral/pocket-realm/game/application"
-	"github.com/Vintral/pocket-realm/game/models"
 	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/game/player"
 	"github.com/Vintral/pocket-realm/game/social"
 	"github.com/Vintral/pocket-realm/game/utilities"
+	"github.com/Vintral/pocket-realm/models"
 	realmRedis "github.com/Vintral/pocket-realm/redis"
 	"github.com/redis/go-redis/v9"
 
@@ -164,7 +164,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	models.Redis = redisClient
+	//models.Redis = redisClient
 
 	fmt.Println("Connected to Redis")
 	fmt.Println(redisClient)

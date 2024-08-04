@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	models "github.com/Vintral/pocket-realm/game/models"
+	models "github.com/Vintral/pocket-realm/models"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/sdk/trace"

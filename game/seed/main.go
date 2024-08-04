@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	models "github.com/Vintral/pocket-realm/game/models"
+	models "github.com/Vintral/pocket-realm/models"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 

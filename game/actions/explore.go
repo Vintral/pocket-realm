@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Vintral/pocket-realm/game/models"
 	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/game/utilities"
+	"github.com/Vintral/pocket-realm/models"
 
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -104,6 +104,6 @@ func Explore(baseCtx context.Context) {
 		}`,
 		)})
 		go user.Log("Spent: "+strconv.Itoa(energy)+" energy -- Found: "+strconv.FormatFloat(increase, 'f', 2, 64)+" acres", user.RoundData.ID)
-		go user.UpdateRank()
+		//go user.UpdateRank()
 	}
 }
