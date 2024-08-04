@@ -1,5 +1,7 @@
 package main
 
-import fmt
+import (
+	fmt
+)
 
 fmt.Println("Loaded Models");

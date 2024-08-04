@@ -17,9 +17,9 @@ import (
 	"github.com/Vintral/pocket-realm/game/models"
 	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/game/player"
-	realmRedis "github.com/Vintral/pocket-realm/game/redis"
 	"github.com/Vintral/pocket-realm/game/social"
 	"github.com/Vintral/pocket-realm/game/utilities"
+	realmRedis "github.com/Vintral/pocket-realm/redis"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/rs/zerolog"
