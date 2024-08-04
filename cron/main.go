@@ -175,7 +175,7 @@ func process() {
 
 	log.Info().Int("minute", minute).Msg("Cron: " + fmt.Sprint(minute))
 
-	rounds := models.GetActiveRounds(ctx, minute)
+	rounds := models.GetActiveRoundsForTick(ctx, minute)
 	if rounds == nil {
 		log.Warn().Msg("No Active Rounds")
 		return
@@ -207,7 +207,7 @@ func setupDbase() {
 }
 
 func setupLogs() {
-	zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
 	output := zerolog.ConsoleWriter{
 		Out:           os.Stderr,

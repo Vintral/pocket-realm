@@ -8,6 +8,8 @@ github.com/Vintral/pocket-realm/game v0.0.0-20240626021355-d08824553a09 h1:f/AQH
 github.com/Vintral/pocket-realm/game v0.0.0-20240626021355-d08824553a09/go.mod h1:p83Yg4iyEWOHobt15BuMFRe1mn5xZicfAekxbJCGh08=
 github.com/Vintral/pocket-realm/game v0.0.0-20240627000615-7a41a1e99d67 h1:/M95nGxu7iyYZBFFyOWRjR1H3XrlFhJ7Focv0Pr/iFI=
 github.com/Vintral/pocket-realm/game v0.0.0-20240627000615-7a41a1e99d67/go.mod h1:X5uxgR8zzodqsphRGxnYa3RHI9PVd6adgD8gvWODf6U=
+github.com/Vintral/pocket-realm/game v0.0.0-20240627041512-b716c034b649 h1:0w36DbIQ/CmuXx26sF4U49LZFNFyL0THpxIkgfBW8U8=
+github.com/Vintral/pocket-realm/game v0.0.0-20240627041512-b716c034b649/go.mod h1:X5uxgR8zzodqsphRGxnYa3RHI9PVd6adgD8gvWODf6U=
 github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK343L8=
 github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=

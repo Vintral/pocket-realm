@@ -164,6 +164,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	models.Redis = redisClient
+
 	fmt.Println("Connected to Redis")
 	fmt.Println(redisClient)
 
@@ -249,7 +251,7 @@ func listen(conn *websocket.Conn) {
 			return
 		}
 
-		fmt.Println("Message:", string(messageContent))
+		log.Info().Msg("Message:" + string(messageContent))
 
 		ctx := context.WithValue(context.Background(), utilities.KeyTraceProvider{}, traceProvider)
 		ctx = context.WithValue(ctx, utilities.KeyUser{}, user)
@@ -283,6 +285,10 @@ func listen(conn *websocket.Conn) {
 			social.GetMessages(ctx)
 		case "GET_EVENTS":
 			player.GetEvents(ctx)
+		case "MARK_EVENT_SEEN":
+			player.HandleMarkEventSeen(ctx)
+		case "MESSAGE":
+			social.SendMessage(ctx)
 		case "SHOUT":
 			social.SendShout(ctx)
 		case "SHOUTS":
@@ -295,6 +301,8 @@ func listen(conn *websocket.Conn) {
 			application.GetRules(user)
 		case "NEWS":
 			application.GetNews(user)
+		case "GET_ROUNDS":
+			application.GetRounds(ctx)
 		case "GET_SELF":
 			fallthrough
 		case "LOAD_USER":
@@ -310,7 +318,7 @@ func listen(conn *websocket.Conn) {
 			// 	conn.WriteMessage(1, []byte("{\"type\":\"ERROR_USER\"}"))
 			// }
 		default:
-			fmt.Println("Unhandled Command:", payload.Type)
+			log.Warn().Msg("Unhandled Command: " + payload.Type)
 		}
 	}
 }

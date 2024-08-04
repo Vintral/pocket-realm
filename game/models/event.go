@@ -6,15 +6,17 @@ import (
 	"math"
 	"time"
 
+	"github.com/Vintral/pocket-realm/game/utilities"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
 	"gorm.io/gorm"
 )
 
 type Event struct {
 	BaseModel
 
-	GUID      uuid.UUID `gorm:"uniqueIndex,size:36" json:"-"`
+	GUID      uuid.UUID `gorm:"uniqueIndex,size:36" json:"guid"`
 	UserID    uint      `json:"-"`
 	Round     uuid.UUID `json:"round"`
 	Event     string    `json:"event"`
@@ -36,6 +38,17 @@ func markEventSeen(event *Event) {
 	res := db.WithContext(ctx).Save(&event)
 	if res.Error != nil {
 		log.Warn().Int("event-id", int(event.ID)).Msg("Error Marking Event Seen: " + fmt.Sprint(event.ID))
+	}
+}
+
+func markEventsSeen(events []*Event) {
+	time.Sleep(3 * time.Second)
+
+	_, span := Tracer.Start(context.Background(), "mark-events-seen")
+	defer span.End()
+
+	for _, e := range events {
+		go markEventSeen(e)
 	}
 }
 
@@ -74,9 +87,23 @@ func LoadEvents(baseContext context.Context, userid int, round uuid.UUID, page i
 		log.Error().AnErr("Error Loading Events", res.Error).Msg("Error Loading Events")
 	}
 
-	for _, e := range events {
-		go markEventSeen(e)
-	}
-
 	return events
+}
+
+func MarkEventSeen(baseContext context.Context, evt uuid.UUID) {
+	user := baseContext.Value(utilities.KeyUser{}).(*User)
+
+	ctx, span := Tracer.Start(baseContext, "mark-event-seen")
+	defer span.End()
+
+	log.Info().Msg("Mark Event Seen: " + evt.String())
+	span.SetAttributes(attribute.String("evt", evt.String()))
+	span.SetAttributes(attribute.Int("user", int(user.ID)))
+
+	var event *Event
+	db.WithContext(ctx).Where("guid = ? AND user_id = ?", evt, user.ID).First(&event)
+
+	fmt.Println(event)
+	event.Seen = true
+	db.WithContext(ctx).Save(&event)
 }

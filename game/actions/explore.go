@@ -104,5 +104,6 @@ func Explore(baseCtx context.Context) {
 		}`,
 		)})
 		go user.Log("Spent: "+strconv.Itoa(energy)+" energy -- Found: "+strconv.FormatFloat(increase, 'f', 2, 64)+" acres", user.RoundData.ID)
+		go user.UpdateRank()
 	}
 }

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -50,5 +51,10 @@ func (message *Message) AfterFind(tx *gorm.DB) (err error) {
 
 func (message *Message) Create(userID uint, text string) error {
 	result := db.Create(&Shout{UserID: userID, Shout: text})
+	return result.Error
+}
+
+func (message *Message) Save(ctx context.Context) error {
+	result := db.WithContext(ctx).Save(&message)
 	return result.Error
 }

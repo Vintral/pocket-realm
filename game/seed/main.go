@@ -70,13 +70,16 @@ func main() {
 		createResources(db)
 		createItems(db)
 		// createOverrides(db)
-		round := createRounds(db)
+		round, finished := createRounds(db)
 		createUsers(db, round)
 		createUserTables(db, round)
 		createShouts(db)
 		createConversations(db)
 		createEvents(db, round)
+		createRankings(db, finished)
 	}
+
+	log.Info().Msg("Done Seeding")
 }
 
 func createUserTables(db *gorm.DB, round *models.Round) {
@@ -241,7 +244,7 @@ func createUserTables(db *gorm.DB, round *models.Round) {
 	})
 }
 
-func createRounds(db *gorm.DB) *models.Round {
+func createRounds(db *gorm.DB) (current *models.Round, finished *models.Round) {
 	//================================//
 	// Rounds													//
 	//================================//
@@ -271,7 +274,7 @@ func createRounds(db *gorm.DB) *models.Round {
 	}
 	db.Create(round)
 
-	return ret
+	return ret, round
 }
 
 func createUsers(db *gorm.DB, round *models.Round) {
@@ -382,6 +385,27 @@ func createShouts(db *gorm.DB) {
 	})
 }
 
+func createRankings(db *gorm.DB, round *models.Round) {
+	log.Info().Msg("createRankings")
+
+	var users []*models.User
+	result := db.Order("id desc").Find(&users)
+	log.Info().Msg("Users: " + fmt.Sprint(result.RowsAffected))
+
+	for i, user := range users {
+		log.Info().Msg("User: " + user.Username)
+
+		db.Create(&models.Ranking{
+			UserID:  user.ID,
+			RoundID: round.ID,
+			Place:   uint(i) + 1,
+			Power:   (uint(result.RowsAffected) - uint(i)) * 100,
+			Land:    (uint(result.RowsAffected) - uint(i)) * 25,
+		})
+	}
+
+}
+
 func createEvents(db *gorm.DB, round *models.Round) {
 	fmt.Println("Seeding Events")
 
@@ -423,6 +447,7 @@ func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE conversations")
 	db.Exec("DROP TABLE messages")
 	db.Exec("DROP TABLE events")
+	db.Exec("DROP TABLE rankings")
 }
 
 func createConversations(db *gorm.DB) {

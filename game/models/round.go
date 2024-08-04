@@ -19,8 +19,12 @@ import (
 type ContextKey string
 type KeyUser struct{}
 
-var rounds map[uuid.UUID]*Round = make(map[uuid.UUID]*Round)
-var roundsById map[int]*Round = make(map[int]*Round)
+var rounds = make(map[uuid.UUID]*Round)
+var roundsById = make(map[int]*Round)
+
+var activeRounds []*Round
+var pastRounds []*Round
+var rankingsByRoundId = make(map[int][]*Ranking)
 
 type Round struct {
 	BaseModel
@@ -38,6 +42,8 @@ type Round struct {
 	Buildings        []*Building          `gorm:"-" json:"buildings"`
 	MapBuildings     map[string]*Building `gorm:"-" json:"-"`
 	MapBuildingsById map[uint]*Building   `gorm:"-" json:"-"`
+	Top              []*Ranking           `gorm:"-" json:"top"`
+	User             []*Ranking           `gorm:"-" json:"finished"`
 	Tick             uint                 `gorm:"default:5" json:"tick"`
 }
 
@@ -267,6 +273,16 @@ func (round *Round) CanGather(guid string) bool {
 	return false
 }
 
+func (round *Round) LoadUserResults(user *User) {
+	log.Debug().Msg("LoadUserResults: " + fmt.Sprint(round.ID) + " -- " + fmt.Sprint(user.ID))
+}
+
+func (round *Round) GetRankings(user *User) (top []*Ranking, personal *Ranking) {
+	log.Debug().Msg("GetRankings: " + fmt.Sprint(round.ID) + " -- " + fmt.Sprint(user.ID))
+
+	return nil, nil
+}
+
 func LoadRoundById(ctx context.Context, roundID int) (*Round, error) {
 	r := roundsById[roundID]
 	if r != nil {
@@ -332,8 +348,6 @@ func LoadRoundForUser(base context.Context) {
 	}
 }
 
-var activeRounds []*Round
-
 func ResetActiveRounds(baseContext context.Context) {
 	_, span := Tracer.Start(baseContext, "reset-active-rounds")
 	defer span.End()
@@ -341,27 +355,58 @@ func ResetActiveRounds(baseContext context.Context) {
 	activeRounds = nil
 }
 
-func GetActiveRounds(baseContext context.Context, tick int) []*Round {
+func GetPastRounds(baseContext context.Context, user *User, c chan []*Round) {
+	log.Debug().Msg("GetPastRounds")
+
+	if pastRounds != nil {
+		log.Debug().Msg("Re-using past rounds")
+	} else {
+		ctx, span := Tracer.Start(baseContext, "get-past-rounds")
+		defer span.End()
+
+		if err := db.WithContext(ctx).Model(&Round{}).Where("ends < ?", time.Now()).Scan(&pastRounds).Error; err != nil {
+			log.Warn().Err(err).Msg("Error loading rounds")
+			c <- nil
+		}
+	}
+
+	c <- pastRounds
+}
+
+func GetActiveRoundsForTick(baseContext context.Context, tick int) []*Round {
+	log.Debug().Msg("GetActiveRoundsForTick")
+
+	ctx, span := Tracer.Start(baseContext, "get-active-rounds-for-tick")
+	defer span.End()
+
+	c := make(chan []*Round)
+	go GetActiveRounds(ctx, c)
+	rounds := <-c
+
+	var ret []*Round
+	for _, r := range rounds {
+		log.Debug().Msg(fmt.Sprintf("%d - %d = %t", r.Tick, tick, tick%int(r.Tick) == 0))
+
+		if tick == 0 || tick%int(r.Tick) == 0 {
+			ret = append(ret, r)
+		}
+	}
+
+	return ret
+}
+
+func GetActiveRounds(baseContext context.Context, c chan []*Round) {
 	if activeRounds != nil {
-		log.Debug().Msg("Re-using rounds")
+		log.Debug().Msg("Re-using active rounds")
 	} else {
 		ctx, span := Tracer.Start(baseContext, "get-active-rounds")
 		defer span.End()
 
 		if err := db.WithContext(ctx).Model(&Round{}).Where("ends > ?", time.Now()).Find(&activeRounds).Error; err != nil {
 			log.Warn().Err(err).Msg("Error loading rounds")
-			return nil
+			c <- nil
 		}
 	}
 
-	var ret []*Round
-	for _, r := range activeRounds {
-		log.Debug().Msg(fmt.Sprintf("%d - %d = %t", r.Tick, tick, tick%int(r.Tick) == 0))
-
-		if tick%int(r.Tick) == 0 {
-			ret = append(ret, r)
-		}
-	}
-
-	return ret
+	c <- activeRounds
 }

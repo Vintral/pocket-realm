@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"gorm.io/gorm"
 )
@@ -63,6 +65,32 @@ func (conversation *Conversation) LoadMessages() (err error) {
 	return res.Error
 }
 
+func GetConversation(base context.Context, user1 uint, user2 uint) *Conversation {
+	log.Info().Uint("user1", user1).Uint("user2", user2).Msg("GetConversationId")
+
+	ctx, sp := Tracer.Start(base, "get-conversation")
+	defer sp.End()
+
+	sp.SetAttributes(attribute.Int("user1", int(user1)), attribute.Int("user2", int(user2)))
+
+	var conversation *Conversation
+	res := db.WithContext(ctx).Table("conversations").Where("(user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)", user1, user2, user2, user1).Scan(&conversation)
+	if res.Error != nil {
+		log.Info().Msg("Creating Conversation")
+
+		conversation = &Conversation{User1ID: user1, User2ID: user2}
+		res = db.WithContext(ctx).Save(&conversation)
+		if res.Error != nil {
+			sp.RecordError(res.Error)
+			sp.SetStatus(codes.Error, "Getting conversation for users")
+
+			return nil
+		}
+	}
+
+	return conversation
+}
+
 func LoadConversation(guid uuid.UUID) *Conversation {
 	fmt.Println("conversation:Load:", guid)
 
@@ -76,14 +104,20 @@ func LoadConversation(guid uuid.UUID) *Conversation {
 }
 
 func LoadConversations(base context.Context, user *User, page int) []*Conversation {
-	fmt.Println("LoadConversations")
+	log.Trace().Msg("LoadConversations")
 
 	ctx, span := Tracer.Start(base, "load-conversations")
 	defer span.End()
 
 	perPage := 20
 	var conversations []*Conversation
-	res := db.WithContext(ctx).Table("conversations").Where("user1_id = ? OR user2_id = ?", user.ID, user.ID).Limit(20).Offset((page - 1) * perPage).Find(&conversations)
+
+	res := db.WithContext(ctx).
+		Table("conversations").
+		Where("user1_id = ? OR user2_id = ?", user.ID, user.ID).
+		Joins("INNER JOIN ( SELECT messages.conversation FROM messages GROUP BY conversation DESC) AS msg ON msg.conversation = conversations.id ").
+		Limit(20).Offset((page - 1) * perPage).
+		Find(&conversations)
 	if res.Error != nil {
 		span.SetStatus(codes.Error, "loading-conversation-error")
 		span.RecordError(res.Error)
@@ -91,7 +125,8 @@ func LoadConversations(base context.Context, user *User, page int) []*Conversati
 		span.SetStatus(codes.Ok, "processed")
 
 		for _, conversation := range conversations {
-			db.WithContext(ctx).Table("messages").Where("conversation = ?", conversation.GUID).Order("ID desc").Limit(1).Scan(&conversation.LastMessage)
+			db.WithContext(ctx).Table("messages").Where("conversation = ?", conversation.ID).Order("ID desc").Limit(1).Scan(&conversation.LastMessage)
+
 			conversation.LastMessage.Reply = user.ID == conversation.LastMessage.UserID
 
 			if conversation.User2ID == user.ID {
@@ -107,4 +142,9 @@ func LoadConversations(base context.Context, user *User, page int) []*Conversati
 	}
 
 	return conversations
+}
+
+func (conversation *Conversation) Save(ctx context.Context) error {
+	result := db.WithContext(ctx).Save(&conversation)
+	return result.Error
 }
