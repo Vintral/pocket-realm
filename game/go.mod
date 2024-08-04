@@ -6,8 +6,8 @@ go 1.22
 toolchain go1.22.4
 
 require (
-	github.com/Vintral/pocket-realm/models v0.0.0-20240804040559-ec741d010e14
-	github.com/Vintral/pocket-realm/redis v0.0.0-20240804040559-ec741d010e14
+	github.com/Vintral/pocket-realm/models v0.0.0-20240804073019-601bc693a7f1
+	github.com/Vintral/pocket-realm/redis v0.0.0-20240804073019-601bc693a7f1
 	github.com/rs/zerolog v1.33.0
 	go.opentelemetry.io/otel v1.28.0
 	go.opentelemetry.io/otel/sdk v1.28.0

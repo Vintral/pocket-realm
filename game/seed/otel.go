@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/Vintral/pocket-realm/game/utilities"
+	"github.com/Vintral/pocket-realm//utilities"
 	"github.com/rs/zerolog/log"
 )
 
@@ -110,10 +110,10 @@ func newTraceProvider(res *resource.Resource, ctx context.Context) (*trace.Trace
 	OTEL_EXPORTER_HOST := utilities.GetEnv("OTEL_EXPORTER_HOST", "127.0.0.1")
 	OTEL_EXPORTER_PORT := utilities.GetEnv("OTEL_EXPORTER_PORT", "4317")
 
-	log.Info().Msg( "Connection Collector: " + OTEL_EXPORTER_HOST+":"+OTEL_EXPORTER_PORT )
+	log.Info().Msg("Connection Collector: " + OTEL_EXPORTER_HOST + ":" + OTEL_EXPORTER_PORT)
 
 	conn, err := grpc.NewClient(
-		OTEL_EXPORTER_HOST+":"+OTEL_EXPORTER_PORT,		
+		OTEL_EXPORTER_HOST+":"+OTEL_EXPORTER_PORT,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -124,7 +124,7 @@ func newTraceProvider(res *resource.Resource, ctx context.Context) (*trace.Trace
 	//traceExporter, err := stdouttrace.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create trace exporter: %w", err)
-	}	
+	}
 
 	// traceProvider := trace.NewTracerProvider(
 	// 	trace.WithBatcher(traceExporter,
@@ -137,9 +137,9 @@ func newTraceProvider(res *resource.Resource, ctx context.Context) (*trace.Trace
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithResource(res),
 		sdktrace.WithSpanProcessor(
-			sdktrace.NewBatchSpanProcessor(traceExporter),			
+			sdktrace.NewBatchSpanProcessor(traceExporter),
 		),
-	);
+	)
 	return traceProvider, nil
 }
 

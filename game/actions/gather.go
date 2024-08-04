@@ -8,8 +8,8 @@ import (
 	"math/rand"
 	"strconv"
 
+	"github.com/Vintral/pocket-realm//utilities"
 	"github.com/Vintral/pocket-realm/game/payloads"
-	"github.com/Vintral/pocket-realm/game/utilities"
 	"github.com/Vintral/pocket-realm/models"
 )
 

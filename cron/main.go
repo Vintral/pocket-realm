@@ -16,7 +16,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	tracerDefinition "go.opentelemetry.io/otel/trace"
 
-	realmRedis "github.com/Vintral/pocket-realm/game/redis"
+	realmRedis "github.com/Vintral/pocket-realm/redis"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/go-co-op/gocron/v2"

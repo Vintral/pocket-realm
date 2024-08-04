@@ -12,12 +12,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Vintral/pocket-realm//utilities"
 	"github.com/Vintral/pocket-realm/game/actions"
 	"github.com/Vintral/pocket-realm/game/application"
 	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/game/player"
+	"github.com/Vintral/pocket-realm/game/rankings"
 	"github.com/Vintral/pocket-realm/game/social"
-	"github.com/Vintral/pocket-realm/game/utilities"
 	"github.com/Vintral/pocket-realm/models"
 	realmRedis "github.com/Vintral/pocket-realm/redis"
 	"github.com/redis/go-redis/v9"
@@ -172,6 +173,7 @@ func main() {
 	go handleRoundUpdates(redisClient)
 
 	social.Initialize(tp)
+	rankings.Initialize(tp)
 
 	//==============================//
 	//	Run Database migrations			//

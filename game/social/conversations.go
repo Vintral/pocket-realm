@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Vintral/pocket-realm/game/utilities"
 	"github.com/Vintral/pocket-realm/models"
+	"github.com/Vintral/pocket-realm/utilities"
 	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"

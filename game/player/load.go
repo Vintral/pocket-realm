@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Vintral/pocket-realm/game/utilities"
+	"github.com/Vintral/pocket-realm//utilities"
 	"github.com/Vintral/pocket-realm/models"
 )
 
