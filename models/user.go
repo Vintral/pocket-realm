@@ -10,6 +10,8 @@ import (
 
 	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/game/utilities"
+	realmRedis "github.com/Vintral/pocket-realm/redis"
+	redisDef "github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"
@@ -44,6 +46,20 @@ type User struct {
 	Context      context.Context `gorm:"-:all" json:"-"`
 	Connection   *websocket.Conn `gorm:"-" json:"-"`
 	DB           *gorm.DB        `gorm:"-" json:"-"`
+}
+
+type RankingSnapshot struct {
+	Username string  `json:"username"`
+	Power    float64 `json:"power"`
+	Land     float64 `json:"land"`
+}
+
+func (r RankingSnapshot) MarshalBinary() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func (r RankingSnapshot) UnMarshalBinary(data []byte, resp interface{}) error {
+	return json.Unmarshal(data, resp)
 }
 
 func (user *User) BeforeCreate(tx *gorm.DB) (err error) {
@@ -219,6 +235,8 @@ func (user *User) UpdateRound(ctx context.Context, wg *sync.WaitGroup) bool {
 		return false
 	}
 
+	user.UpdateRank(ctx)
+
 	log.Warn().Msg("Round Data Saved")
 	log.Warn().Msg("Gold Tick:" + fmt.Sprint(user.RoundData.TickGold))
 	return true
@@ -366,7 +384,38 @@ func (user *User) Dump() {
 }
 
 func (user *User) UpdateRank(ctx context.Context) {
+	ctx, span := Tracer.Start(ctx, "update-rank")
+	defer span.End()
+
 	log.Trace().Msg("Update Rank")
+
+	redis, err := realmRedis.Instance(nil)
+	if err != nil {
+		log.Warn().AnErr("err", err).Msg("Error getting redis instance")
+		return
+	}
+
+	score := math.Floor(user.RoundData.Land * 10)
+	log.Warn().Msg("UpdateRank: " + fmt.Sprint(user.ID) + " -- " + fmt.Sprint(score))
+
+	result := redis.ZAdd(
+		ctx,
+		fmt.Sprint(user.RoundID)+"-rankings",
+		redisDef.Z{Score: user.RoundData.Land * 10, Member: user.ID},
+	)
+	if result.Err() != nil {
+		log.Warn().AnErr("err", result.Err()).Msg("Error updating redis rank")
+		return
+	}
+
+	if err := redis.Set(
+		ctx,
+		fmt.Sprint(user.RoundID)+"-snapshot-"+fmt.Sprint(user.ID),
+		&RankingSnapshot{Username: user.Username, Power: math.Floor(score), Land: math.Floor(user.RoundData.Land)},
+		0,
+	).Err(); err != nil {
+		log.Warn().AnErr("err", err).Msg("Error updating redis snapshot")
+	}
 }
 
 func (user *User) sendUserData() {

@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"time"
 
 	models "github.com/Vintral/pocket-realm/models"
+	realmRedis "github.com/Vintral/pocket-realm/redis"
 	"github.com/google/uuid"
+	redisDef "github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 
 	"github.com/joho/godotenv"
@@ -76,7 +79,7 @@ func main() {
 		createShouts(db)
 		createConversations(db)
 		createEvents(db, round)
-		createRankings(db, finished)
+		createRankings(db, finished, round)
 	}
 
 	log.Info().Msg("Done Seeding")
@@ -385,25 +388,55 @@ func createShouts(db *gorm.DB) {
 	})
 }
 
-func createRankings(db *gorm.DB, round *models.Round) {
+func createRankings(db *gorm.DB, round *models.Round, current *models.Round) {
 	log.Info().Msg("createRankings")
 
 	var users []*models.User
 	result := db.Order("id desc").Find(&users)
 	log.Info().Msg("Users: " + fmt.Sprint(result.RowsAffected))
 
+	redis, err := realmRedis.Instance(nil)
+	if err != nil {
+		log.Panic().AnErr("err", err).Msg("Error getting redis instance")
+	}
+
+	log.Warn().Msg("Redis loaded")
+	if redis == nil {
+		log.Panic().Msg("Redis instance is nil")
+	}
+
 	for i, user := range users {
-		log.Info().Msg("User: " + user.Username)
+		log.Info().Msg("User: " + user.Username + " -- " + fmt.Sprint(user.RoundID) + " -- " + fmt.Sprint(user.ID))
+
+		land := (uint(result.RowsAffected) - uint(i)) * 25
+		power := land * 10
 
 		db.Create(&models.Ranking{
 			UserID:  user.ID,
 			RoundID: round.ID,
 			Place:   uint(i) + 1,
-			Power:   (uint(result.RowsAffected) - uint(i)) * 100,
-			Land:    (uint(result.RowsAffected) - uint(i)) * 25,
+			Power:   power,
+			Land:    land,
 		})
-	}
 
+		result := redis.ZAdd(
+			context.Background(),
+			fmt.Sprint(current.ID)+"-rankings",
+			redisDef.Z{Score: float64(land * 10), Member: user.ID},
+		)
+		if result.Err() != nil {
+			log.Warn().AnErr("err", result.Err()).Msg("Error adding ranking")
+		}
+
+		if err := redis.Set(
+			context.Background(),
+			fmt.Sprint(user.RoundID)+"-snapshot-"+fmt.Sprint(user.ID),
+			&models.RankingSnapshot{Username: user.Username, Power: math.Floor(float64(power)), Land: math.Floor(float64(land))},
+			0,
+		).Err(); err != nil {
+			log.Warn().AnErr("err", err).Msg("Error updating redis snapshot")
+		}
+	}
 }
 
 func createEvents(db *gorm.DB, round *models.Round) {
