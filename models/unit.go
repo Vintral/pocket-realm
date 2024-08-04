@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	utils "github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utilities"
 )
 
 type Unit struct {
@@ -50,7 +50,7 @@ func (unit *Unit) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (unit *Unit) getRecruitAmount(user *User, energy uint) float64 {
 	var amount = (user.RoundData.RecruitPower * float64(energy)) / float64(unit.CostPoints)
-	fmt.Println("Amount:", utils.RoundFloat(amount, 2))
+	fmt.Println("Amount:", utilities.RoundFloat(amount, 2))
 
 	if amount > 1 {
 		amount = math.Floor(amount)

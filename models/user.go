@@ -9,8 +9,9 @@ import (
 	"sync"
 
 	"github.com/Vintral/pocket-realm/game/payloads"
-	"github.com/Vintral/pocket-realm/game/rankings"
+	realmRedis "github.com/Vintral/pocket-realm/redis"
 	"github.com/Vintral/pocket-realm/utilities"
+	redisDef "github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"
@@ -221,6 +222,41 @@ func (user *User) updateTicks(ctx context.Context) {
 	}
 }
 
+func (user *User) UpdateRank(base context.Context) {
+	ctx, span := Tracer.Start(base, "update-rank")
+	defer span.End()
+
+	log.Trace().Msg("Update Rank")
+
+	redisClient, err := realmRedis.Instance(nil)
+	if err != nil {
+		log.Warn().AnErr("error", err).Msg("Error getting redis client")
+		return
+	}
+
+	score := math.Floor(user.RoundData.Land * 10)
+	log.Warn().Msg("UpdateRank: " + fmt.Sprint(user.ID) + " -- " + fmt.Sprint(score))
+
+	result := redisClient.ZAdd(
+		ctx,
+		fmt.Sprint(user.RoundID)+"-rankings",
+		redisDef.Z{Score: user.RoundData.Land * 10, Member: user.ID},
+	)
+	if result.Err() != nil {
+		log.Warn().AnErr("err", result.Err()).Msg("Error updating redis rank")
+		return
+	}
+
+	if err := redisClient.Set(
+		ctx,
+		fmt.Sprint(user.RoundID)+"-snapshot-"+fmt.Sprint(user.ID),
+		&RankingSnapshot{Username: user.Username, Power: math.Floor(score), Land: math.Floor(user.RoundData.Land)},
+		0,
+	).Err(); err != nil {
+		log.Warn().AnErr("err", err).Msg("Error updating redis snapshot")
+	}
+}
+
 func (user *User) UpdateRound(ctx context.Context, wg *sync.WaitGroup) bool {
 	ctx, span := Tracer.Start(ctx, "user-update-round")
 	defer span.End()
@@ -234,7 +270,7 @@ func (user *User) UpdateRound(ctx context.Context, wg *sync.WaitGroup) bool {
 		return false
 	}
 
-	rankings.UpdateRank(ctx, user)
+	user.UpdateRank(ctx)
 
 	log.Warn().Msg("Round Data Saved")
 	log.Warn().Msg("Gold Tick:" + fmt.Sprint(user.RoundData.TickGold))

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math"
 
-	utils "github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utilities"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
@@ -47,7 +47,7 @@ func (building *Building) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (building *Building) getBuildAmount(user *User, energy uint) float64 {
 	var amount = (user.RoundData.BuildPower * float64(energy)) / float64(building.CostPoints)
-	fmt.Println("Amount:", utils.RoundFloat(amount, 2))
+	fmt.Println("Amount:", utilities.RoundFloat(amount, 2))
 
 	if amount > 1 {
 		amount = math.Floor(amount)
