@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Vintral/pocket-realm//utilities"
 	"github.com/Vintral/pocket-realm/models"
+	"github.com/Vintral/pocket-realm/utilities"
 	"github.com/rs/zerolog/log"
 )
 

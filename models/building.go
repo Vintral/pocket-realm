@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math"
 
-	utils "github.com/Vintral/pocket-realm//utilities"
+	utils "github.com/Vintral/pocket-realm/utilities"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"

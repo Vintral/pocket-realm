@@ -8,9 +8,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Vintral/pocket-realm//utilities"
 	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/game/rankings"
+	"github.com/Vintral/pocket-realm/utilities"
 	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"

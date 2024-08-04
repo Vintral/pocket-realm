@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Vintral/pocket-realm//utilities"
 	"github.com/Vintral/pocket-realm/models"
+	"github.com/Vintral/pocket-realm/utilities"
 )
 
 type LoadUserRequest struct {

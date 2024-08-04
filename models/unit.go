@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	utils "github.com/Vintral/pocket-realm//utilities"
+	utils "github.com/Vintral/pocket-realm/utilities"
 )
 
 type Unit struct {

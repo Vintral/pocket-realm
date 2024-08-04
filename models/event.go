@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/Vintral/pocket-realm//utilities"
+	"github.com/Vintral/pocket-realm/utilities"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
