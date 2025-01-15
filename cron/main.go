@@ -199,7 +199,7 @@ func setupDbase() {
 	}
 
 	log.Info().Msg("Setting up database")
-	db, err = models.Database(false)
+	db, err = models.Database(false, nil)
 	if err != nil {
 		time.Sleep(3 * time.Second)
 		panic(err)

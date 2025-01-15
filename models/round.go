@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"sync"
 
 	"time"
@@ -29,26 +30,57 @@ var rankingsByRoundId = make(map[int][]*Ranking)
 type Round struct {
 	BaseModel
 
-	GUID             uuid.UUID            `gorm:"uniqueIndex,size:36" json:"guid"`
-	EnergyMax        uint                 `gorm:"default:250" json:"energy_max"`
-	EnergyRegen      uint                 `gorm:"default:10" json:"energy_regen"`
-	Ends             time.Time            `json:"ends"`
-	Resources        []*Resource          `gorm:"-" json:"resources"`
-	MapResources     map[string]*Resource `gorm:"-" json:"-"`
-	MapResourcesById map[uint]*Resource   `gorm:"-" json:"-"`
-	Units            []*Unit              `gorm:"-" json:"units"`
-	MapUnits         map[string]*Unit     `gorm:"-" json:"-"`
-	MapUnitsById     map[uint]*Unit       `gorm:"-" json:"-"`
-	Buildings        []*Building          `gorm:"-" json:"buildings"`
-	MapBuildings     map[string]*Building `gorm:"-" json:"-"`
-	MapBuildingsById map[uint]*Building   `gorm:"-" json:"-"`
-	Top              []*Ranking           `gorm:"-" json:"top"`
-	User             []*Ranking           `gorm:"-" json:"finished"`
-	Tick             uint                 `gorm:"default:5" json:"tick"`
+	GUID             uuid.UUID              `gorm:"uniqueIndex,size:36" json:"guid"`
+	EnergyMax        uint                   `gorm:"default:250" json:"energy_max"`
+	EnergyRegen      uint                   `gorm:"default:10" json:"energy_regen"`
+	Starts           time.Time              `json:"starts"`
+	Ends             time.Time              `json:"ends"`
+	StartLand        uint                   `json:"start_land"`
+	Resources        []*Resource            `gorm:"-" json:"resources"`
+	MapResources     map[string]*Resource   `gorm:"-" json:"-"`
+	MapResourcesById map[uint]*Resource     `gorm:"-" json:"-"`
+	Units            []*Unit                `gorm:"-" json:"units"`
+	MapUnits         map[string]*Unit       `gorm:"-" json:"-"`
+	MapUnitsById     map[uint]*Unit         `gorm:"-" json:"-"`
+	Buildings        []*Building            `gorm:"-" json:"buildings"`
+	MapBuildings     map[string]*Building   `gorm:"-" json:"-"`
+	MapBuildingsById map[uint]*Building     `gorm:"-" json:"-"`
+	Top              []*Ranking             `gorm:"-" json:"top"`
+	User             []*Ranking             `gorm:"-" json:"finished"`
+	UserRank         int                    `gorm:"-" json:"user_rank"`
+	Tick             uint                   `gorm:"default:5" json:"tick"`
+	FoodSold         int                    `gorm:"default:0" json:"food_sold"`
+	FoodCost         float32                `gorm:"default:2" json:"food_cost"`
+	WoodSold         int                    `gorm:"default:0" json:"wood_sold"`
+	WoodCost         float32                `gorm:"default:2" json:"wood_cost"`
+	StoneSold        int                    `gorm:"default:0" json:"stone_sold"`
+	StoneCost        float32                `gorm:"default:2" json:"stone_cost"`
+	MetalSold        int                    `gorm:"default:0" json:"metal_sold"`
+	MetalCost        float32                `gorm:"default:2" json:"metal_cost"`
+	Market           []*RoundMarketResource `gorm:"-" json:"-"`
 }
 
 func (round *Round) BeforeCreate(tx *gorm.DB) (err error) {
 	round.GUID = uuid.New()
+	return
+}
+
+func (round *Round) AfterCreate(tx *gorm.DB) (err error) {
+	log.Info().Msg("After Create")
+
+	round.loadResources(tx.Statement.Context, nil)
+	log.Info().Any("round resources", round.MapResourcesById).Msg("Loading Resources")
+
+	wg := new(sync.WaitGroup)
+	for i, r := range round.MapResourcesById {
+		log.Info().Any("round", r).Any("index", i).Msg("Resource")
+		if r.CanMarket {
+			wg.Add(1)
+			go round.createMarketResource(tx.Statement.Context, r, wg)
+		}
+	}
+	wg.Wait()
+
 	return
 }
 
@@ -69,6 +101,20 @@ func (round *Round) AfterFind(tx *gorm.DB) (err error) {
 	return
 }
 
+func (round *Round) createMarketResource(ctx context.Context, resource *Resource, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	log.Trace().Any("resource", resource).Msg("Round: createMarketResource")
+
+	go db.WithContext(ctx).Create(&RoundMarketResource{
+		RoundID:    round.ID,
+		ResourceID: resource.GUID,
+		Sold:       0,
+		Bought:     0,
+		Value:      2,
+	})
+}
+
 func (round *Round) loadBuildings(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -81,7 +127,7 @@ func (round *Round) loadBuildings(ctx context.Context, wg *sync.WaitGroup) {
 			round_buildings.cost_gold, round_buildings.cost_metal, round_buildings.cost_faith, round_buildings.cost_mana,
 			round_buildings.cost_food, buildings.bonus_field, round_buildings.bonus_value, round_buildings.available,
 			round_buildings.upkeep_gold, round_buildings.upkeep_food, round_buildings.upkeep_wood, round_buildings.upkeep_faith, 
-			round_buildings.upkeep_metal, round_buildings.upkeep_stone, round_buildings.upkeep_mana, round_buildings.buildable
+			round_buildings.upkeep_metal, round_buildings.upkeep_stone, round_buildings.upkeep_mana, round_buildings.buildable, round_buildings.start_with
 		FROM 
 			round_buildings 
 		INNER JOIN 
@@ -127,7 +173,7 @@ func (round *Round) loadUnits(ctx context.Context, wg *sync.WaitGroup) {
 			round_units.attack, round_units.defense, round_units.power, round_units.health, round_units.ranged, round_units.cost_gold, 
 			round_units.cost_points, round_units.cost_food, round_units.cost_wood, round_units.cost_stone, round_units.cost_metal, round_units.cost_mana, 
 			round_units.cost_faith, round_units.upkeep_gold, round_units.upkeep_food, round_units.upkeep_wood, round_units.upkeep_faith, 
-			round_units.upkeep_metal, round_units.upkeep_stone, round_units.upkeep_mana, round_units.available, round_units.recruitable
+			round_units.upkeep_metal, round_units.upkeep_stone, round_units.upkeep_mana, round_units.available, round_units.recruitable, round_units.start_with
 		FROM 
 			round_units 
 		INNER JOIN 
@@ -161,14 +207,16 @@ func (round *Round) loadUnits(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 func (round *Round) loadResources(ctx context.Context, wg *sync.WaitGroup) {
-	defer wg.Done()
+	if wg != nil {
+		defer wg.Done()
+	}
 
 	log.Info().Msg("loadResources")
 
 	db.WithContext(ctx).Raw(`
 		SELECT 
 			resources.id, resources.name, round_resources.created_at, round_resources.updated_at, round_resources.deleted_at, round_resources.guid, round_resources.resource_id,
-			round_resources.can_gather, round_resources.can_market 
+			round_resources.can_gather, round_resources.can_market, round_resources.start_with 
 		FROM 
 			round_resources 
 		INNER JOIN 
@@ -189,6 +237,7 @@ func (round *Round) loadResources(ctx context.Context, wg *sync.WaitGroup) {
 	).Scan(&round.Resources)
 
 	round.MapResources = make(map[string]*Resource)
+	round.MapResourcesById = make(map[uint]*Resource)
 	for _, r := range round.Resources {
 		log.Debug().
 			Str("guid", r.GUID.String()).
@@ -196,6 +245,7 @@ func (round *Round) loadResources(ctx context.Context, wg *sync.WaitGroup) {
 			Msg("Saved: " + r.Name)
 
 		round.MapResources[r.GUID.String()] = r
+		round.MapResourcesById[r.ID] = r
 	}
 }
 
@@ -283,6 +333,21 @@ func (round *Round) GetRankings(user *User) (top []*Ranking, personal *Ranking) 
 	return nil, nil
 }
 
+func (round *Round) Clone() *Round {
+	return &Round{
+		BaseModel: BaseModel{
+			ID: round.ID,
+		},
+		GUID:        round.GUID,
+		EnergyMax:   round.EnergyMax,
+		EnergyRegen: round.EnergyRegen,
+		Starts:      round.Starts,
+		Ends:        round.Ends,
+		StartLand:   round.StartLand,
+		Tick:        round.Tick,
+	}
+}
+
 func LoadRoundById(ctx context.Context, roundID int) (*Round, error) {
 	r := roundsById[roundID]
 	if r != nil {
@@ -356,21 +421,40 @@ func ResetActiveRounds(baseContext context.Context) {
 }
 
 func GetPastRounds(baseContext context.Context, user *User, c chan []*Round) {
+	ctx, span := Tracer.Start(baseContext, "get-past-rounds")
+	defer span.End()
+
 	log.Debug().Msg("GetPastRounds")
 
 	if pastRounds != nil {
 		log.Debug().Msg("Re-using past rounds")
 	} else {
-		ctx, span := Tracer.Start(baseContext, "get-past-rounds")
-		defer span.End()
-
 		if err := db.WithContext(ctx).Model(&Round{}).Where("ends < ?", time.Now()).Scan(&pastRounds).Error; err != nil {
 			log.Warn().Err(err).Msg("Error loading rounds")
 			c <- nil
 		}
 	}
 
-	c <- pastRounds
+	log.Info().Msg("GetPastRounds")
+
+	rounds := []*Round{}
+	for _, round := range pastRounds {
+		round = round.Clone()
+		round.UserRank = getRank(ctx, int(user.ID), round)
+
+		query := `SELECT place, power, land, username AS name, users.avatar FROM rankings INNER JOIN users ON users.id = rankings.user_id WHERE rankings.round_id = ` + fmt.Sprint(round.ID) + ` LIMIT 10`
+		log.Warn().Str("query", query).Msg("Built Query")
+		if err := db.WithContext(ctx).Raw(query).Scan(&round.Top).Error; err != nil {
+			log.Warn().Err(err).Msg("Error loading round ranks")
+		}
+
+		log.Warn().Any("data", round.Top).Msg("<><><><><> Round Data")
+		rounds = append(rounds, round)
+	}
+
+	log.Info().Msg("GetPastRounds - Done")
+
+	c <- rounds
 }
 
 func GetActiveRoundsForTick(baseContext context.Context, tick int) []*Round {
@@ -380,7 +464,7 @@ func GetActiveRoundsForTick(baseContext context.Context, tick int) []*Round {
 	defer span.End()
 
 	c := make(chan []*Round)
-	go GetActiveRounds(ctx, c)
+	go GetActiveRounds(ctx, nil, c)
 	rounds := <-c
 
 	var ret []*Round
@@ -395,18 +479,63 @@ func GetActiveRoundsForTick(baseContext context.Context, tick int) []*Round {
 	return ret
 }
 
-func GetActiveRounds(baseContext context.Context, c chan []*Round) {
+func getRank(baseContext context.Context, user int, round *Round) int {
+	ctx, span := Tracer.Start(baseContext, "get-rank")
+	defer span.End()
+
+	key := fmt.Sprintf("%d-rankings", round.ID)
+	log.Warn().Any("round", round).Uint("round-id", round.ID).Int("user", user).Str("key", key).Msg("<<<<<============ KEY")
+	result := redisClient.ZRevRank(ctx, key, strconv.Itoa(user))
+
+	if val, err := result.Result(); err == nil {
+		log.Info().Any("result", result).Any("result-value", result.Val()).Str("key", key).Msg("Have Result")
+		return int(val)
+	}
+
+	return -1
+}
+
+func GetActiveRounds(baseContext context.Context, user *User, c chan []*Round) {
+	ctx, span := Tracer.Start(baseContext, "get-active-rounds")
+	defer span.End()
+
 	if activeRounds != nil {
 		log.Debug().Msg("Re-using active rounds")
 	} else {
-		ctx, span := Tracer.Start(baseContext, "get-active-rounds")
-		defer span.End()
-
 		if err := db.WithContext(ctx).Model(&Round{}).Where("ends > ?", time.Now()).Find(&activeRounds).Error; err != nil {
 			log.Warn().Err(err).Msg("Error loading rounds")
 			c <- nil
 		}
 	}
 
-	c <- activeRounds
+	log.Info().Msg("GetActiveRounds")
+
+	rounds := []*Round{}
+	for _, round := range activeRounds {
+		round = round.Clone()
+		round.UserRank = getRank(ctx, int(user.ID), round)
+		rounds = append(rounds, round)
+	}
+	log.Info().Msg("GetActiveRounds - Done")
+
+	// log.Warn().Msg(fmt.Sprintf("CHECK ||| %d ||| %d ||| %d |", len(rounds), rounds[0].UserRank, activeRounds[0].UserRank))
+	// log.Warn().Msg(fmt.Sprintf("CHECK -- %d", activeRounds[0].UserRank))
+
+	c <- rounds
+	// c <- activeRounds
+}
+
+func (round *Round) GetMarketInfo(baseContext context.Context) []*RoundMarketResource {
+	log.Trace().Msg("GetMarketInfo")
+
+	if len(round.Market) > 0 {
+		return round.Market
+	}
+
+	ctx, span := Tracer.Start(baseContext, "get-market-info")
+	defer span.End()
+
+	db.WithContext(ctx).Table("round_market_resources").Where("round_id = ?", round.ID).Scan(&round.Market)
+
+	return round.Market
 }

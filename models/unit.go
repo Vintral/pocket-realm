@@ -41,6 +41,7 @@ type Unit struct {
 	Available       bool      `gorm:"->;-:migration" json:"available"`
 	Recruitable     bool      `gorm:"->;-:migration" json:"recruitable"`
 	SupportsPartial bool      `gorm:"->;-:migration" json:"supports_partial"`
+	StartWith       uint      `gorm:"->;-:migration" json:"start_with"`
 }
 
 func (unit *Unit) BeforeCreate(tx *gorm.DB) (err error) {

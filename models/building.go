@@ -38,6 +38,7 @@ type Building struct {
 	Available       bool      `gorm:"->;-:migration" json:"available"`
 	Buildable       bool      `gorm:"->;-:migration" json:"buildable"`
 	SupportsPartial bool      `gorm:"->;-:migration" json:"supports_partial"`
+	StartWith       uint      `gorm:"->;-:migration" json:"start_with"`
 }
 
 func (building *Building) BeforeCreate(tx *gorm.DB) (err error) {

@@ -14,6 +14,7 @@ import (
 
 	"github.com/Vintral/pocket-realm/game/actions"
 	"github.com/Vintral/pocket-realm/game/application"
+	"github.com/Vintral/pocket-realm/game/market"
 	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/game/player"
 	"github.com/Vintral/pocket-realm/game/rankings"
@@ -122,7 +123,7 @@ func main() {
 	go func() {
 		select {
 		case <-signalChan:
-			db, err := models.Database(false)
+			db, err := models.Database(false, nil)
 			if err != nil {
 				sql, err := db.DB()
 				if err != nil {
@@ -172,13 +173,10 @@ func main() {
 
 	go handleRoundUpdates(redisClient)
 
-	social.Initialize(tp)
-	rankings.Initialize(tp)
-
 	//==============================//
 	//	Run Database migrations			//
 	//==============================//
-	db, err := models.Database(false)
+	db, err := models.Database(false, redisClient)
 	if err != nil {
 		panic(err)
 	}
@@ -194,6 +192,12 @@ func main() {
 	// uuid, _ := uuid.Parse("be31cd63-5608-438a-bf8c-65157e944558")
 	// round, _ := models.LoadRoundByGuid(context.Background(), uuid)
 	// fmt.Println(round)
+
+	//==============================//
+	//	Module Initializations			//
+	//==============================//
+	social.Initialize(tp)
+	rankings.Initialize(tp, db)
 
 	//==============================//
 	//	Setup Websocket Server			//
@@ -267,58 +271,54 @@ func listen(conn *websocket.Conn) {
 		}
 
 		switch payload.Type {
-		case "TESTING":
-			conn.WriteMessage(1, []byte("OK"))
-		case "PING":
-			conn.WriteMessage(1, []byte("{ \"type\":\"PONG\"}"))
-		case "ROUND":
-			models.LoadRoundForUser(ctx)
+		case "BUILD":
+			actions.Build(ctx)
 		case "EXPLORE":
 			actions.Explore(ctx)
 		case "GATHER":
 			actions.Gather(ctx)
-		case "RECRUIT":
-			actions.Recruit(ctx)
-		case "BUILD":
-			actions.Build(ctx)
 		case "GET_CONVERSATIONS":
 			social.GetConversations(ctx)
-		case "GET_MESSAGES":
-			social.GetMessages(ctx)
 		case "GET_EVENTS":
 			player.GetEvents(ctx)
+		case "GET_MESSAGES":
+			social.GetMessages(ctx)
+		case "GET_RANKINGS":
+			rankings.RetrieveRankings(ctx)
+		case "GET_ROUNDS":
+			application.GetRounds(ctx)
 		case "MARK_EVENT_SEEN":
 			player.HandleMarkEventSeen(ctx)
+		case "MARKET_INFO":
+			market.GetInfo(ctx)
 		case "MESSAGE":
 			social.SendMessage(ctx)
+		case "NEWS":
+			application.GetNews(user)
+		case "PING":
+			conn.WriteMessage(1, []byte("{ \"type\":\"PONG\"}"))
+		case "PLAY_ROUND":
+			player.PlayRound(ctx)
+		case "RECRUIT":
+			actions.Recruit(ctx)
+		case "ROUND":
+			models.LoadRoundForUser(ctx)
+		case "RULES":
+			application.GetRules(user)
 		case "SHOUT":
 			social.SendShout(ctx)
 		case "SHOUTS":
 			social.GetShouts(user)
 		case "SUBSCRIBE_SHOUTS":
 			social.SubscribeShouts(ctx)
+		case "TESTING":
+			conn.WriteMessage(1, []byte("OK"))
 		case "UNSUBSCRIBE_SHOUTS":
 			social.UnsubscribeShouts(ctx)
-		case "RULES":
-			application.GetRules(user)
-		case "NEWS":
-			application.GetNews(user)
-		case "GET_ROUNDS":
-			application.GetRounds(ctx)
 		case "GET_SELF":
 			fallthrough
 		case "LOAD_USER":
 			player.Load(ctx)
-			// player.Get
-			// fmt.Println("Get User")
-			// if data, err := json.Marshal(user); err == nil {
-			// 	before := []byte("{\"type\":\"USER_DATA\",\"data\":{\"user\":")
-			// 	after := []byte("}}")
-			// 	conn.WriteMessage(1, []byte(append(append(before, data...), after...)))
-			// } else {
-			// 	fmt.Println(err)
-			// 	conn.WriteMessage(1, []byte("{\"type\":\"ERROR_USER\"}"))
-			// }
 		default:
 			log.Warn().Msg("Unhandled Command: " + payload.Type)
 		}

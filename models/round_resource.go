@@ -13,6 +13,7 @@ type RoundResource struct {
 	ResourceID uint      `json:"resource_id"`
 	CanGather  bool      `json:"can_gather"`
 	CanMarket  bool      `json:"can_market"`
+	StartWith  uint      `json:"start_with"`
 }
 
 func (resource *RoundResource) BeforeCreate(tx *gorm.DB) (err error) {

@@ -13,6 +13,7 @@ type Resource struct {
 	Name      string    `json:"name"`
 	CanGather bool      `gorm:"->;-:migration" json:"can_gather"`
 	CanMarket bool      `gorm:"->;-:migration" json:"can_market"`
+	StartWith uint      `gorm:"->;-:migration" json:"start_with"`
 }
 
 func (resource *Resource) BeforeCreate(tx *gorm.DB) (err error) {

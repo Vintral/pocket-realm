@@ -47,7 +47,7 @@ func main() {
 	models.SetTracerProvider(tp)
 
 	fmt.Println("Setting up database")
-	db, err := models.Database(false)
+	db, err := models.Database(false, nil)
 	if err != nil {
 		time.Sleep(3 * time.Second)
 		panic(err)
@@ -72,8 +72,9 @@ func main() {
 		createBuildings(db)
 		createResources(db)
 		createItems(db)
-		// createOverrides(db)
 		round, finished := createRounds(db)
+		// _, _ = createRounds(db)
+		createOverrides(db)
 		createUsers(db, round)
 		createUserTables(db, round)
 		createShouts(db)
@@ -256,7 +257,9 @@ func createRounds(db *gorm.DB) (current *models.Round, finished *models.Round) {
 		EnergyMax:   250,
 		EnergyRegen: 10,
 		Tick:        1,
+		Starts:      time.Now(),
 		Ends:        time.Now().Add(14 * 24 * time.Hour),
+		StartLand:   100,
 	}
 	db.Create(round)
 	ret := round
@@ -265,7 +268,9 @@ func createRounds(db *gorm.DB) (current *models.Round, finished *models.Round) {
 		EnergyMax:   250,
 		EnergyRegen: 10,
 		Tick:        10,
+		Starts:      time.Now().Add(7 * 24 * time.Hour),
 		Ends:        time.Now().Add(14 * 24 * time.Hour),
+		StartLand:   10,
 	}
 	db.Create(round)
 
@@ -273,72 +278,98 @@ func createRounds(db *gorm.DB) (current *models.Round, finished *models.Round) {
 		EnergyMax:   250,
 		EnergyRegen: 10,
 		Tick:        10,
+		Starts:      time.Now().Add(-21 * 24 * time.Hour),
 		Ends:        time.Now().Add(-14 * 24 * time.Hour),
+		StartLand:   10,
 	}
 	db.Create(round)
 
 	return ret, round
 }
 
-func createUsers(db *gorm.DB, round *models.Round) {
+func createUsers(db *gorm.DB, r *models.Round) {
 	//================================//
 	// Users													//
 	//================================//
 	fmt.Println("Seeding users")
-	db.Create(&models.User{
+
+	var round models.Round
+	db.Model(models.Round{GUID: r.GUID}).First(&round)
+
+	user := &models.User{
 		Email:        "jeffrey.heater@gmail.com",
 		Admin:        true,
 		Username:     "Vintral",
 		Avatar:       "1",
-		RoundID:      1,
+		RoundID:      int(round.ID),
 		RoundPlaying: round.GUID,
-	})
-	db.Create(&models.User{
+	}
+	db.FirstOrCreate(&user)
+	user.Join(context.Background(), &round)
+
+	user = &models.User{
 		Email:    "jeffrey.heater0@gmail.com",
 		Admin:    true,
 		Username: "Trilanni",
 		Avatar:   "2",
-	})
-	db.Create(&models.User{
+	}
+	db.Create(&user)
+	user.Join(context.Background(), &round)
+
+	user = &models.User{
 		Email:        "jeffrey.heater1@gmail.com",
 		Admin:        true,
 		Username:     "Vintral1",
 		Avatar:       "3",
 		RoundID:      1,
 		RoundPlaying: round.GUID,
-	})
-	db.Create(&models.User{
+	}
+	db.Create(&user)
+	user.Join(context.Background(), &round)
+
+	user = &models.User{
 		Email:        "jeffrey.heater2@gmail.com",
 		Admin:        true,
 		Username:     "Vintral2",
 		Avatar:       "4",
 		RoundID:      1,
 		RoundPlaying: round.GUID,
-	})
-	db.Create(&models.User{
+	}
+	db.Create(&user)
+	user.Join(context.Background(), &round)
+
+	user = &models.User{
 		Email:        "jeffrey.heater3@gmail.com",
 		Admin:        true,
 		Username:     "Vintral3",
 		Avatar:       "5",
 		RoundID:      1,
 		RoundPlaying: round.GUID,
-	})
-	db.Create(&models.User{
+	}
+	db.Create(&user)
+	user.Join(context.Background(), &round)
+
+	user = &models.User{
 		Email:        "jeffrey.heater4@gmail.com",
 		Admin:        true,
 		Username:     "Vintral4",
 		Avatar:       "6",
 		RoundID:      1,
 		RoundPlaying: round.GUID,
-	})
-	db.Create(&models.User{
+	}
+	db.Create(&user)
+	user.Join(context.Background(), &round)
+
+	user = &models.User{
 		Email:        "jeffrey.heater5@gmail.com",
 		Admin:        true,
 		Username:     "Vintral5",
 		Avatar:       "1",
 		RoundID:      1,
 		RoundPlaying: round.GUID,
-	})
+	}
+	db.Create(&user)
+	user.Join(context.Background(), &round)
 }
 
 func createShouts(db *gorm.DB) {
@@ -430,7 +461,7 @@ func createRankings(db *gorm.DB, round *models.Round, current *models.Round) {
 
 		if err := redis.Set(
 			context.Background(),
-			fmt.Sprint(user.RoundID)+"-snapshot-"+fmt.Sprint(user.ID),
+			fmt.Sprint(current.ID)+"-snapshot-"+fmt.Sprint(user.ID),
 			&models.RankingSnapshot{Username: user.Username, Power: math.Floor(float64(power)), Land: math.Floor(float64(land))},
 			0,
 		).Err(); err != nil {
@@ -466,6 +497,7 @@ func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE user_items")
 	db.Exec("DROP TABLE round_resources")
 	db.Exec("DROP TABLE round_buildings")
+	db.Exec("DROP TABLE round_market_resources")
 	db.Exec("DROP TABLE round_units")
 	db.Exec("DROP TABLE units")
 	db.Exec("DROP TABLE users")
@@ -547,10 +579,13 @@ func createOverrides(db *gorm.DB) {
 		UpkeepMana:  1,
 		Available:   true,
 		Recruitable: true,
+		StartWith:   5,
 	})
 
-	db.Create(&models.RoundResource{RoundID: 1, ResourceID: 6, CanGather: false, CanMarket: false})
-	db.Create(&models.RoundResource{RoundID: 1, ResourceID: 7, CanGather: false, CanMarket: false})
+	db.Create(&models.RoundResource{RoundID: 1, ResourceID: 6, StartWith: 400, CanGather: false, CanMarket: false})
+	db.Create(&models.RoundResource{RoundID: 1, ResourceID: 7, StartWith: 400, CanGather: false, CanMarket: false})
+
+	db.Create(&models.RoundResource{RoundID: 2, ResourceID: 7, StartWith: 400, CanGather: false, CanMarket: false})
 
 	db.Create(&models.RoundBuilding{
 		BuildingID:  1,
@@ -573,6 +608,31 @@ func createOverrides(db *gorm.DB) {
 		UpkeepMana:  1,
 		Buildable:   true,
 		Available:   true,
+		StartWith:   5,
+	})
+
+	db.Create(&models.RoundBuilding{
+		BuildingID:  1,
+		RoundID:     2,
+		CostPoints:  1,
+		CostWood:    1,
+		CostStone:   1,
+		CostGold:    1,
+		CostFood:    1,
+		CostMetal:   1,
+		CostFaith:   1,
+		CostMana:    1,
+		BonusValue:  1,
+		UpkeepGold:  1,
+		UpkeepFood:  1,
+		UpkeepWood:  1,
+		UpkeepStone: 1,
+		UpkeepMetal: 1,
+		UpkeepFaith: 1,
+		UpkeepMana:  1,
+		Buildable:   true,
+		Available:   true,
+		StartWith:   5,
 	})
 }
 
@@ -603,6 +663,7 @@ func createBuildings(db *gorm.DB) {
 		Available:       true,
 		Buildable:       true,
 		SupportsPartial: false,
+		StartWith:       0,
 	})
 	db.Create(&models.RoundBuilding{
 		BuildingID:      2,
@@ -614,6 +675,7 @@ func createBuildings(db *gorm.DB) {
 		Available:       true,
 		Buildable:       true,
 		SupportsPartial: false,
+		StartWith:       0,
 	})
 	db.Create(&models.RoundBuilding{
 		BuildingID:      3,
@@ -625,6 +687,7 @@ func createBuildings(db *gorm.DB) {
 		Available:       true,
 		Buildable:       true,
 		SupportsPartial: false,
+		StartWith:       0,
 	})
 	db.Create(&models.RoundBuilding{
 		BuildingID:      4,
@@ -636,6 +699,7 @@ func createBuildings(db *gorm.DB) {
 		Available:       true,
 		Buildable:       true,
 		SupportsPartial: false,
+		StartWith:       0,
 	})
 	db.Create(&models.RoundBuilding{
 		BuildingID:      5,
@@ -647,6 +711,7 @@ func createBuildings(db *gorm.DB) {
 		Available:       true,
 		Buildable:       true,
 		SupportsPartial: false,
+		StartWith:       0,
 	})
 	db.Create(&models.RoundBuilding{
 		BuildingID:      6,
@@ -658,6 +723,7 @@ func createBuildings(db *gorm.DB) {
 		Available:       true,
 		Buildable:       true,
 		SupportsPartial: false,
+		StartWith:       0,
 	})
 	db.Create(&models.RoundBuilding{
 		BuildingID:      7,
@@ -669,6 +735,7 @@ func createBuildings(db *gorm.DB) {
 		Available:       true,
 		Buildable:       true,
 		SupportsPartial: false,
+		StartWith:       0,
 	})
 	db.Create(&models.RoundBuilding{
 		BuildingID:      8,
@@ -680,6 +747,7 @@ func createBuildings(db *gorm.DB) {
 		Available:       true,
 		Buildable:       true,
 		SupportsPartial: false,
+		StartWith:       0,
 	})
 }
 
@@ -699,13 +767,13 @@ func createResources(db *gorm.DB) {
 	//================================//
 	// Resource Defaults							//
 	//================================//
-	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 1, CanGather: true, CanMarket: false})
-	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 2, CanGather: true, CanMarket: true})
-	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 3, CanGather: true, CanMarket: true})
-	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 4, CanGather: true, CanMarket: true})
-	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 5, CanGather: true, CanMarket: true})
-	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 6, CanGather: true, CanMarket: false})
-	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 7, CanGather: true, CanMarket: false})
+	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 1, StartWith: 200, CanGather: true, CanMarket: false})
+	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 2, StartWith: 200, CanGather: true, CanMarket: true})
+	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 3, StartWith: 200, CanGather: true, CanMarket: true})
+	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 4, StartWith: 200, CanGather: true, CanMarket: true})
+	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 5, StartWith: 200, CanGather: true, CanMarket: true})
+	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 6, StartWith: 200, CanGather: true, CanMarket: false})
+	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 7, StartWith: 200, CanGather: true, CanMarket: false})
 }
 
 func createUnits(db *gorm.DB) {
@@ -755,6 +823,7 @@ func createUnits(db *gorm.DB) {
 		Available:       true,
 		Recruitable:     true,
 		SupportsPartial: false,
+		StartWith:       0,
 	})
 	db.Create(&models.RoundUnit{
 		RoundID:         0,
@@ -772,6 +841,7 @@ func createUnits(db *gorm.DB) {
 		Available:       true,
 		Recruitable:     true,
 		SupportsPartial: false,
+		StartWith:       0,
 	})
 	db.Create(&models.RoundUnit{
 		RoundID:         0,
@@ -789,6 +859,7 @@ func createUnits(db *gorm.DB) {
 		Available:       true,
 		Recruitable:     true,
 		SupportsPartial: false,
+		StartWith:       0,
 	})
 	db.Create(&models.RoundUnit{
 		RoundID:         0,
@@ -805,6 +876,7 @@ func createUnits(db *gorm.DB) {
 		Available:       true,
 		Recruitable:     true,
 		SupportsPartial: false,
+		StartWith:       0,
 	})
 }
 

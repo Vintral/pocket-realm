@@ -21,13 +21,14 @@ func GetRounds(baseCtx context.Context) {
 	d := make(chan []*models.Round)
 
 	log.Info().Msg("Getting active rounds")
-	go models.GetActiveRounds(ctx, c)
+	go models.GetActiveRounds(ctx, user, c)
 
 	log.Info().Msg("Getting past rounds")
 	go models.GetPastRounds(ctx, user, d)
 
 	log.Info().Msg("Sent requests")
 	active, past := <-c, <-d
+	log.Info().Msg("Have results")
 
 	for _, r := range active {
 		r.Buildings = nil
@@ -36,8 +37,6 @@ func GetRounds(baseCtx context.Context) {
 
 		log.Info().Msg("Cleared Data")
 	}
-
-	log.Info().Msg("Have results")
 
 	payload := struct {
 		Type   string          `json:"type"`
@@ -48,6 +47,8 @@ func GetRounds(baseCtx context.Context) {
 		Active: active,
 		Past:   past,
 	}
+
+	log.Info().Any("rounds", payload).Msg("return Payload")
 
 	fmt.Println(payload)
 	user.Connection.WriteJSON(payload)

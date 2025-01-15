@@ -49,7 +49,9 @@ type User struct {
 }
 
 type RankingSnapshot struct {
+	Rank     int     `gorm:"-" json:"rank"`
 	Username string  `json:"username"`
+	Avatar   int     `gorm:"-" json:"avatar"`
 	Power    float64 `json:"power"`
 	Land     float64 `json:"land"`
 }
@@ -82,6 +84,7 @@ func (user *User) AfterFind(tx *gorm.DB) (err error) {
 	defer sp.End()
 
 	roundId := getRound(user)
+	log.Warn().Int("id", roundId).Msg("getRound")
 
 	if roundId != 0 {
 		round, err := LoadRoundById(ctx, roundId)
@@ -101,6 +104,8 @@ func (user *User) AfterFind(tx *gorm.DB) (err error) {
 		go user.loadItems(ctx, wg)
 		wg.Wait()
 	}
+
+	log.Warn().Msg(fmt.Sprintf("USER ROUND:::%d %s", user.RoundID, user.RoundPlaying))
 
 	return
 }
@@ -127,15 +132,15 @@ func (user *User) updateUnits(ctx context.Context, wg *sync.WaitGroup) bool {
 		defer wg.Done()
 	}
 
-	fmt.Println("Saving Quantity:", user.Units[0].Quantity)
-	if err := db.WithContext(ctx).Save(&user.Units).Error; err != nil {
-		fmt.Println("Error updatingUnits")
-		span.SetStatus(codes.Error, err.Error())
-		return false
+	if len(user.Units) != 0 {
+		if err := db.WithContext(ctx).Save(&user.Units).Error; err != nil {
+			log.Error().AnErr("error", err).Msg("Error Updating Units")
+			span.SetStatus(codes.Error, err.Error())
+			return false
+		}
 	}
 
-	fmt.Println("Units Updated")
-
+	log.Trace().Msg("Updated units")
 	return true
 }
 
@@ -264,16 +269,19 @@ func (user *User) UpdateRound(ctx context.Context, wg *sync.WaitGroup) bool {
 		defer wg.Done()
 	}
 
-	user.updateTicks(ctx)
-	if err := db.WithContext(ctx).Save(&user.RoundData).Error; err != nil {
-		span.RecordError(err)
-		return false
+	if user.RoundData.ID != 0 {
+		user.updateTicks(ctx)
+		if err := db.WithContext(ctx).Save(&user.RoundData).Error; err != nil {
+			span.RecordError(err)
+			return false
+		}
+
+		user.UpdateRank(ctx)
+
+		log.Warn().Msg("Round Data Saved")
+		log.Warn().Msg("Gold Tick:" + fmt.Sprint(user.RoundData.TickGold))
 	}
 
-	user.UpdateRank(ctx)
-
-	log.Warn().Msg("Round Data Saved")
-	log.Warn().Msg("Gold Tick:" + fmt.Sprint(user.RoundData.TickGold))
 	return true
 }
 
@@ -284,11 +292,16 @@ func (user *User) updateBuildings(ctx context.Context, wg *sync.WaitGroup) bool 
 		defer wg.Done()
 	}
 
-	if err := db.WithContext(ctx).Save(&user.Buildings).Error; err != nil {
-		span.SetName("user-update-buildings-ERROR")
-		span.RecordError(err)
-		return false
+	if len(user.Buildings) > 0 {
+		if err := db.WithContext(ctx).Save(&user.Buildings).Error; err != nil {
+			log.Error().AnErr("error", err).Msg("Error Updating Buildings")
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			return false
+		}
 	}
+
+	log.Trace().Msg("Updated buildings")
 	return true
 }
 
@@ -318,9 +331,9 @@ func (user *User) loadRound(ctx context.Context, wg *sync.WaitGroup) {
 	defer span.End()
 	defer wg.Done()
 
-	log.Warn().Msg("MetalTick Before: " + fmt.Sprint(user.RoundData.TickMetal))
+	// log.Warn().Msg("MetalTick Before: " + fmt.Sprint(user.RoundData.TickMetal))
 	db.WithContext(ctx).Where("user_id = ? and round_id = ?", user.ID, getRound(user)).Find(&user.RoundData)
-	log.Warn().Msg("MetalTick After: " + fmt.Sprint(user.RoundData.TickMetal))
+	// log.Warn().Msg("MetalTick After: " + fmt.Sprint(user.RoundData.TickMetal))
 }
 
 func (user *User) loadBuildings(ctx context.Context, wg *sync.WaitGroup) {
@@ -502,7 +515,7 @@ func (user *User) Log(message string, round uint) {
 }
 
 func (user *User) LogEvent(eventText string, round uuid.UUID) {
-	log.Info().Msg("LogEvent: " + eventText)
+	log.Info().Any("round", round).Msg("LogEvent: " + eventText)
 
 	ctx, span := Tracer.Start(context.Background(), "log-event")
 	defer span.End()
@@ -649,9 +662,130 @@ func (user *User) takeUnit(ctx context.Context, unitid int, amount int) bool {
 	return false
 }
 
+func (user *User) IsPlayingRound(ctx context.Context, round int) bool {
+	log.Info().Uint("user", user.ID).Int("round", round).Msg("IsPlayingRound")
+
+	var data *UserRound
+	if err := db.WithContext(ctx).Where("user_id = ? AND round_id = ?", user.ID, round).Find(&data).Error; err != nil {
+		log.Info().AnErr("error", err).Any("data", data).Msg("No User Found!")
+
+		return false
+	}
+
+	if data.ID == 0 {
+		log.Info().Any("user", data).Msg("No user found!")
+		return false
+	}
+
+	log.Info().Any("user", data).Msg("Found User!")
+	return true
+}
+
+func (user *User) Join(ctx context.Context, round *Round) *User {
+	log.Info().Str("round", round.GUID.String()).Msg("Joining round")
+
+	ctx, span := Tracer.Start(ctx, "user-join")
+	defer span.End()
+
+	data := &UserRound{
+		UserID:  user.ID,
+		RoundID: round.ID,
+		// Energy:   int(round.EnergyMax),
+		// Land:     float64(round.StartLand),
+		// FreeLand: float64(round.StartLand),
+	}
+	db.WithContext(ctx).Create(&data)
+	temp := user.LoadForRound(int(user.ID), int(round.ID))
+	temp.RoundData = *data
+	temp.RoundData.Energy = int(round.EnergyMax)
+	temp.RoundData.Land = float64(round.StartLand)
+	temp.RoundData.FreeLand = float64(round.StartLand)
+
+	// temp.RoundID = int(round.ID)
+	// temp.RoundPlaying = round.GUID
+
+	for _, res := range round.Resources {
+		log.Warn().Any("resource", res).Msg("Resource: " + res.Name)
+		switch res.Name {
+		case "gold":
+			data.Gold = float64(res.StartWith)
+		case "wood":
+			data.Wood = float64(res.StartWith)
+		case "food":
+			data.Food = float64(res.StartWith)
+		case "stone":
+			data.Stone = float64(res.StartWith)
+		case "metal":
+			data.Metal = float64(res.StartWith)
+		case "faith":
+			data.Faith = float64(res.StartWith)
+		case "mana":
+			data.Mana = float64(res.StartWith)
+		default:
+			log.Warn().Msg("Unexpected Field: " + res.Name)
+		}
+	}
+
+	buildings := []*UserBuilding{}
+	for _, building := range round.Buildings {
+		if building.StartWith > 0 {
+			log.Warn().Any("building", building).Msg("Building: " + building.Name + " - " + string(building.StartWith))
+
+			log.Warn().Msg(fmt.Sprintf("Slice Info: %d -- %d", len(buildings), cap(buildings)))
+			buildings = append(buildings, &UserBuilding{
+				UserID:     user.ID,
+				BuildingID: building.ID,
+				RoundID:    round.ID,
+				Quantity:   float64(building.StartWith),
+			})
+			log.Warn().Msg(fmt.Sprintf("Slice Info: %d -- %d", len(buildings), cap(buildings)))
+		}
+	}
+	temp.Buildings = buildings
+
+	units := []*UserUnit{}
+	for _, unit := range round.Units {
+		if unit.StartWith > 0 {
+			log.Warn().Any("unit", unit).Msg("Unit: " + unit.Name + " - " + string(unit.StartWith))
+
+			units = append(units, &UserUnit{
+				UserID:   user.ID,
+				UnitID:   unit.ID,
+				RoundID:  round.ID,
+				Quantity: float64(unit.StartWith),
+			})
+		}
+	}
+	temp.Units = units
+
+	log.Warn().Msg(fmt.Sprintf("User Buildings Length: %d", len(temp.Buildings)))
+	log.Warn().Msg(fmt.Sprintf("User Units Length: %d", len(temp.Units)))
+	db.WithContext(ctx).Save(&temp)
+
+	user.LogEvent("Joined Round", round.GUID)
+	return temp
+}
+
+func (user *User) SwitchRound(round *Round) bool {
+	log.Info().Uint("round", round.ID).Msg(fmt.Sprintf("SwitchRound: %d", round.ID))
+
+	log.Warn().Any("guid", round.GUID).Uint("id", round.ID).Uint("user", user.ID).Msg("TRYING TO SWITCH PLAYING ROUND")
+
+	res := db.Model(&User{}).Where("id = ?", user.ID).Updates(User{RoundID: int(round.ID), RoundPlaying: round.GUID})
+	if res.Error != nil {
+		log.Warn().AnErr("error", res.Error).Msg("Error Updating User Round Info")
+		return false
+	} else {
+		log.Warn().Msg("Updated user")
+	}
+
+	return true
+}
+
 func (user *User) Refresh() {
 	log.Info().Msg("Refresh:" + fmt.Sprint(user.ID))
 
+	user.RoundData = UserRound{}
 	user.Load()
 }
 

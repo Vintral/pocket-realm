@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	provider "go.opentelemetry.io/otel/sdk/trace"
@@ -15,6 +16,7 @@ import (
 )
 
 var db *gorm.DB
+var redisClient *redis.Client
 var Tracer trace.Tracer
 
 func SetTracerProvider(t *provider.TracerProvider) {
@@ -22,10 +24,14 @@ func SetTracerProvider(t *provider.TracerProvider) {
 	Tracer = t.Tracer("game-server")
 }
 
-func Database(retry bool) (*gorm.DB, error) {
+func Database(retry bool, redis *redis.Client) (*gorm.DB, error) {
 	// Use cached value if we can
 	if db != nil {
 		return db, nil
+	}
+
+	if redis != nil {
+		redisClient = redis
 	}
 
 	_, sp := Tracer.Start(context.Background(), "setup-database")
@@ -46,7 +52,7 @@ func Database(retry bool) (*gorm.DB, error) {
 			log.Panic().Err(err).Msg("Failed to connect to database @ " + DB_HOST + ":" + DB_PORT)
 		} else {
 			time.Sleep(3 * time.Second)
-			return Database(true)
+			return Database(true, nil)
 		}
 	}
 
@@ -89,6 +95,7 @@ func RunMigrations(db *gorm.DB) {
 		&UserItem{},
 		&UserLog{},
 		&RoundResource{},
+		&RoundMarketResource{},
 		&RoundUnit{},
 		&RoundBuilding{},
 		&Conversation{},

@@ -34,6 +34,7 @@ type RoundUnit struct {
 	Available       bool      `gorm:"default:false" json:"available"`
 	Recruitable     bool      `gorm:"default:false" json:"recruitable"`
 	SupportsPartial bool      `gorm:"default:false" json:"supports_partial"`
+	StartWith       uint      `gorm:"default:0" json:"start_with"`
 }
 
 func (unit *RoundUnit) BeforeCreate(tx *gorm.DB) (err error) {

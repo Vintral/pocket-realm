@@ -30,6 +30,7 @@ type RoundBuilding struct {
 	Buildable       bool      `gorm:"default:false" json:"buildable"`
 	Available       bool      `gorm:"default:false" json:"available"`
 	SupportsPartial bool      `gorm:"default:false" json:"supports_partial"`
+	StartWith       uint      `gorm:"default:0" json:"start_with"`
 }
 
 func (building *RoundBuilding) BeforeCreate(tx *gorm.DB) (err error) {
