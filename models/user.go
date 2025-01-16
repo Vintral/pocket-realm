@@ -450,6 +450,51 @@ type SendErrorParams struct {
 	Err     error
 }
 
+func (user *User) updateField(field string, val float64) bool {
+	switch field {
+	case "wood":
+		if val < 0 && user.RoundData.Wood < val {
+			return false
+		}
+		user.RoundData.Wood += val
+	case "gold":
+		if val < 0 && user.RoundData.Gold < val {
+			return false
+		}
+		user.RoundData.Gold += val
+	case "food":
+		if val < 0 && user.RoundData.Food < val {
+			return false
+		}
+		user.RoundData.Food += val
+	case "stone":
+		if val < 0 && user.RoundData.Stone < val {
+			return false
+		}
+		user.RoundData.Stone += val
+	case "metal":
+		if val < 0 && user.RoundData.Metal < val {
+			return false
+		}
+		user.RoundData.Metal += val
+	case "mana":
+		if val < 0 && user.RoundData.Mana < val {
+			return false
+		}
+		user.RoundData.Mana += val
+	case "faith":
+		if val < 0 && user.RoundData.Faith < val {
+			return false
+		}
+		user.RoundData.Faith += val
+	default:
+		log.Warn().Msg(fmt.Sprint("Unexpected field: ", field))
+		return false
+	}
+
+	return true
+}
+
 // func (user *User) SendError(ctx context.Context, errorType string, message string) {
 func (user *User) SendError(params SendErrorParams) {
 	if span := utilities.GetSpan(*params.Context); span != nil {
@@ -503,14 +548,10 @@ func (user *User) Log(message string, round uint) {
 	ctx, span := Tracer.Start(context.Background(), "log")
 	defer span.End()
 
-	fmt.Println("Log: " + message)
+	userlog := UserLog{Message: message, RoundID: round, UserID: user.ID}
 
-	log := UserLog{Message: message, RoundID: round}
-
-	if err := db.WithContext(ctx).Save(&log).Error; err != nil {
-		fmt.Println("Error logging: " + message)
-	} else {
-		fmt.Println("Wrote log")
+	if err := db.WithContext(ctx).Save(&userlog).Error; err != nil {
+		log.Warn().Msg("Error logging: " + message)
 	}
 }
 

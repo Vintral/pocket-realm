@@ -273,6 +273,8 @@ func listen(conn *websocket.Conn) {
 		switch payload.Type {
 		case "BUILD":
 			actions.Build(ctx)
+		case "BUY_RESOURCE":
+			market.BuyResource(ctx)
 		case "EXPLORE":
 			actions.Explore(ctx)
 		case "GATHER":
@@ -305,6 +307,8 @@ func listen(conn *websocket.Conn) {
 			models.LoadRoundForUser(ctx)
 		case "RULES":
 			application.GetRules(user)
+		case "SELL_RESOURCE":
+			market.SellResource(ctx)
 		case "SHOUT":
 			social.SendShout(ctx)
 		case "SHOUTS":

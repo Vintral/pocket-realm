@@ -61,7 +61,7 @@ func main() {
 		}
 
 		seedUsers(db, tp, numUsers)
-		log.Info().Msg("Done seeing users")
+		log.Info().Msg("Done seeding users")
 	} else {
 		dropTables(db)
 		runMigrations(db)
@@ -73,7 +73,6 @@ func main() {
 		createResources(db)
 		createItems(db)
 		round, finished := createRounds(db)
-		// _, _ = createRounds(db)
 		createOverrides(db)
 		createUsers(db, round)
 		createUserTables(db, round)
@@ -176,6 +175,7 @@ func createUserTables(db *gorm.DB, round *models.Round) {
 	// Users Rounds										//
 	//================================//
 	fmt.Println("Seeding User's Round")
+
 	db.Create(&models.UserRound{
 		UserID:         1,
 		RoundID:        1,
@@ -197,55 +197,56 @@ func createUserTables(db *gorm.DB, round *models.Round) {
 		BuildPower:     1,
 		RecruitPower:   1,
 	})
-	db.Create(&models.UserRound{
-		UserID:         1,
-		RoundID:        2,
-		CharacterClass: "mage",
-		Energy:         int(round.EnergyMax),
-		Gold:           200,
-		TickGold:       5,
-		Food:           200,
-		TickFood:       5,
-		Wood:           200,
-		TickWood:       5,
-		Metal:          200,
-		TickMetal:      5,
-		Faith:          200,
-		TickFaith:      5,
-		Stone:          200,
-		TickStone:      5,
-		Mana:           200,
-		TickMana:       5,
-		Land:           200,
-		FreeLand:       200,
-		BuildPower:     25,
-		RecruitPower:   25,
-	})
-	db.Create(&models.UserRound{
-		UserID:         3,
-		RoundID:        1,
-		CharacterClass: "priest",
-	})
-	db.Create(&models.UserRound{
-		UserID:         4,
-		RoundID:        1,
-		CharacterClass: "warlord",
-	})
-	db.Create(&models.UserRound{
-		UserID:         5,
-		RoundID:        1,
-		CharacterClass: "necromancer",
-	})
-	db.Create(&models.UserRound{
-		UserID:         6,
-		RoundID:        1,
-		CharacterClass: "merchant",
-	})
-	db.Create(&models.UserRound{
-		UserID:         7,
-		RoundID:        1,
-		CharacterClass: "druid",
-	})
+
+	// db.Create(&models.UserRound{
+	// 	UserID:         1,
+	// 	RoundID:        2,
+	// 	CharacterClass: "mage",
+	// 	Energy:         int(round.EnergyMax),
+	// 	Gold:           200,
+	// 	TickGold:       5,
+	// 	Food:           200,
+	// 	TickFood:       5,
+	// 	Wood:           200,
+	// 	TickWood:       5,
+	// 	Metal:          200,
+	// 	TickMetal:      5,
+	// 	Faith:          200,
+	// 	TickFaith:      5,
+	// 	Stone:          200,
+	// 	TickStone:      5,
+	// 	Mana:           200,
+	// 	TickMana:       5,
+	// 	Land:           200,
+	// 	FreeLand:       200,
+	// 	BuildPower:     25,
+	// 	RecruitPower:   25,
+	// })
+	// db.Create(&models.UserRound{
+	// 	UserID:         3,
+	// 	RoundID:        1,
+	// 	CharacterClass: "priest",
+	// })
+	// db.Create(&models.UserRound{
+	// 	UserID:         4,
+	// 	RoundID:        1,
+	// 	CharacterClass: "warlord",
+	// })
+	// db.Create(&models.UserRound{
+	// 	UserID:         5,
+	// 	RoundID:        1,
+	// 	CharacterClass: "necromancer",
+	// })
+	// db.Create(&models.UserRound{
+	// 	UserID:         6,
+	// 	RoundID:        1,
+	// 	CharacterClass: "merchant",
+	// })
+	// db.Create(&models.UserRound{
+	// 	UserID:         7,
+	// 	RoundID:        1,
+	// 	CharacterClass: "druid",
+	// })
 }
 
 func createRounds(db *gorm.DB) (current *models.Round, finished *models.Round) {
@@ -305,7 +306,7 @@ func createUsers(db *gorm.DB, r *models.Round) {
 		RoundPlaying: round.GUID,
 	}
 	db.FirstOrCreate(&user)
-	user.Join(context.Background(), &round)
+	// user.Join(context.Background(), &round)
 
 	user = &models.User{
 		Email:    "jeffrey.heater0@gmail.com",

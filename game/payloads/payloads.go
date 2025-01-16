@@ -22,6 +22,17 @@ type GatherPayload struct {
 	Resource string `json:"resource"`
 }
 
+type MarketTransactionPayload struct {
+	Type     string    `json:"type"`
+	Quantity int       `json:"quantity"`
+	GUID     uuid.UUID `json:"item"`
+}
+
+type MarketTransactionResult struct {
+	Type    string `json:"type"`
+	Success bool   `json:"success"`
+}
+
 type RoundDataPayload struct {
 	Type  string    `json:"type"`
 	Round uuid.UUID `json:"round"`
