@@ -44,6 +44,40 @@ func (item *Item) AfterFind(tx *gorm.DB) (err error) {
 	return
 }
 
+func (item *Item) Use(baseContext context.Context, user *User) bool {
+	ctx, span := Tracer.Start(baseContext, "item-use")
+	defer span.End()
+
+	log.Info().Int("effects", len(item.Effects)).Msg("item.Use")
+
+	roundUpdated := false
+
+	for _, effect := range item.Effects {
+		log.Info().Any("effect", effect).Msg("Process Effect")
+
+		switch effect.Type {
+		case "resource":
+			switch effect.Name {
+			case "energy":
+				user.RoundData.Energy += int(effect.Amount)
+			case "food":
+				user.RoundData.Food += float64(effect.Amount)
+			}
+
+			roundUpdated = true
+		}
+	}
+
+	if roundUpdated {
+		if !user.UpdateRound(ctx, nil) {
+			log.Error().Uint("id", user.ID).Msg("Error updating round for user")
+			return false
+		}
+	}
+
+	return user.TakeItem(ctx, item)
+}
+
 func GetItemByID(baseContext context.Context, id int) *Item {
 	ctx, span := Tracer.Start(baseContext, "get-item-by-id")
 	defer span.End()

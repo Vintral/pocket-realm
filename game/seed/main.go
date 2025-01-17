@@ -898,7 +898,7 @@ func createItems(db *gorm.DB) (item1 *models.Item, item2 *models.Item) {
 	db.Create(item1)
 	db.Create(&models.Effect{
 		ItemID: item1.ID,
-		Type:   "user",
+		Type:   "resource",
 		Name:   "energy",
 		Amount: 10,
 	})

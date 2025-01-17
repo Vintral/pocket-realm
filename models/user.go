@@ -869,6 +869,29 @@ func (user *User) AddItem(baseContext context.Context, item *Item) bool {
 	return user.updateItems(ctx, nil)
 }
 
+func (user *User) TakeItem(baseContext context.Context, item *Item) bool {
+	ctx, span := Tracer.Start(baseContext, "take-item")
+	defer span.End()
+
+	log.Info().Msg("user.TakeItem")
+
+	var temp *UserItem
+	found := false
+	for i := 0; i < len(user.Items) && !found; i++ {
+		if user.Items[i].ItemID == item.ID {
+			temp = user.Items[i]
+			found = true
+		}
+	}
+
+	if !found {
+		log.Error().Any("item", item).Uint("user-id", user.ID).Msg("Error taking item")
+	}
+
+	temp.Quantity--
+	return user.updateItems(ctx, nil)
+}
+
 func GetUserIdForName(ctx context.Context, name string) uint {
 	var user *User
 	if err := db.WithContext(ctx).Where("username = ?", name).First(&user).Error; err != nil {
