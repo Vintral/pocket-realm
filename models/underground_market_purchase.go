@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-type BlackMarketPurchase struct {
+type UndergroundMarketPurchase struct {
 	BaseModel
 
 	MarketID  uint      `json:"black_market_id"`

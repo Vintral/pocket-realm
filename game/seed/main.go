@@ -498,19 +498,19 @@ func createEvents(db *gorm.DB, round *models.Round) {
 func createBlackMarket(db *gorm.DB) {
 	log.Info().Msg("createBlackMarket")
 
-	db.Create(&models.BlackMarketAuction{
+	db.Create(&models.UndergroundMarketAuction{
 		ItemID:  1,
 		Cost:    50,
 		Expires: time.Now().AddDate(0, 0, 3),
 	})
 
-	db.Create(&models.BlackMarketAuction{
+	db.Create(&models.UndergroundMarketAuction{
 		ItemID:  1,
 		Cost:    50,
 		Expires: time.Now().AddDate(0, 0, 3),
 	})
 
-	db.Create(&models.BlackMarketPurchase{
+	db.Create(&models.UndergroundMarketPurchase{
 		MarketID:  1,
 		UserID:    1,
 		Purchased: time.Now(),
@@ -541,8 +541,8 @@ func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE messages")
 	db.Exec("DROP TABLE events")
 	db.Exec("DROP TABLE rankings")
-	db.Exec("DROP TABLE black_market_purchases")
-	db.Exec("DROP TABLE black_market_auctions")
+	db.Exec("DROP TABLE underground_market_purchases")
+	db.Exec("DROP TABLE underground_market_auctions")
 }
 
 func createConversations(db *gorm.DB) {

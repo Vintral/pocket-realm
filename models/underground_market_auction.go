@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type BlackMarketAuction struct {
+type UndergroundMarketAuction struct {
 	BaseModel
 
 	GUID    uuid.UUID `gorm:"uniqueIndex,size:36" json:"-"`
@@ -16,7 +16,7 @@ type BlackMarketAuction struct {
 	Expires time.Time `json:"expires"`
 }
 
-func (auction *BlackMarketAuction) BeforeCreate(tx *gorm.DB) (err error) {
+func (auction *UndergroundMarketAuction) BeforeCreate(tx *gorm.DB) (err error) {
 	auction.GUID = uuid.New()
 	return
 }
