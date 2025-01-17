@@ -8,4 +8,5 @@ type UserItem struct {
 	UserID   uint      `json:"-"`
 	ItemID   uint      `json:"-"`
 	ItemGuid uuid.UUID `gorm:"->;-:migration" json:"guid"`
+	Quantity uint      `json:"quantity"`
 }
