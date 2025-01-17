@@ -81,6 +81,11 @@ func main() {
 		createEvents(db, round)
 		createRankings(db, finished, round)
 		createBlackMarket(db)
+
+		var user *models.User
+		db.First(&user)
+		log.Info().Any("user", user).Msg("Loaded User")
+		models.GetUndergroundMarketAuctions(context.Background(), user)
 	}
 
 	log.Info().Msg("Done Seeding")
@@ -501,6 +506,12 @@ func createBlackMarket(db *gorm.DB) {
 	db.Create(&models.UndergroundMarketAuction{
 		ItemID:  1,
 		Cost:    50,
+		Expires: time.Now().AddDate(0, 0, -1),
+	})
+
+	db.Create(&models.UndergroundMarketAuction{
+		ItemID:  1,
+		Cost:    50,
 		Expires: time.Now().AddDate(0, 0, 3),
 	})
 
@@ -511,7 +522,7 @@ func createBlackMarket(db *gorm.DB) {
 	})
 
 	db.Create(&models.UndergroundMarketPurchase{
-		MarketID:  1,
+		MarketID:  2,
 		UserID:    1,
 		Purchased: time.Now(),
 	})

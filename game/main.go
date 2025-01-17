@@ -289,6 +289,8 @@ func listen(conn *websocket.Conn) {
 			rankings.RetrieveRankings(ctx)
 		case "GET_ROUNDS":
 			application.GetRounds(ctx)
+		case "GET_UNDERGROUND_MARKET":
+			market.GetUndergroundAuctions(ctx)
 		case "MARK_EVENT_SEEN":
 			player.HandleMarkEventSeen(ctx)
 		case "MARKET_INFO":
