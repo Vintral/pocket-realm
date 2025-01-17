@@ -305,14 +305,24 @@ func (user *User) updateBuildings(ctx context.Context, wg *sync.WaitGroup) bool 
 	return true
 }
 
-func (user *User) updateItems(ctx context.Context, wg *sync.WaitGroup) {
-	wg.Done()
+func (user *User) updateItems(ctx context.Context, wg *sync.WaitGroup) bool {
+	ctx, span := Tracer.Start(ctx, "user-update-items")
+	defer span.End()
+	if wg != nil {
+		defer wg.Done()
+	}
 
-	// ctx, span := Tracer.Start(ctx, "user-update-items")
-	// defer span.End()
-	// defer wg.Done()
+	if len(user.Items) > 0 {
+		if err := db.WithContext(ctx).Save(&user.Items).Error; err != nil {
+			log.Error().AnErr("error", err).Msg("Error Updating Items")
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			return false
+		}
+	}
 
-	// db.WithContext(ctx).Save(&user.Items)
+	log.Trace().Msg("Updated items")
+	return true
 }
 
 func (user *User) loadUnits(ctx context.Context, wg *sync.WaitGroup) {
@@ -828,6 +838,35 @@ func (user *User) Refresh() {
 
 	user.RoundData = UserRound{}
 	user.Load()
+}
+
+func (user *User) AddItem(baseContext context.Context, item *Item) bool {
+	ctx, span := Tracer.Start(baseContext, "add-item")
+	defer span.End()
+
+	log.Info().Msg("AddItem")
+
+	var temp *UserItem
+	found := false
+	for i := 0; i < len(user.Items) && !found; i++ {
+		fmt.Println("Item", i)
+		if user.Items[i].ItemID == item.ID {
+			temp = user.Items[i]
+			found = true
+		}
+	}
+	if temp == nil {
+		fmt.Println("Create New UserItem")
+		temp = &UserItem{
+			UserID:   user.ID,
+			ItemID:   item.ID,
+			ItemGuid: item.GUID,
+		}
+		user.Items = append(user.Items, temp)
+	}
+
+	temp.Quantity++
+	return user.updateItems(ctx, nil)
 }
 
 func GetUserIdForName(ctx context.Context, name string) uint {
