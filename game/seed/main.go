@@ -80,6 +80,7 @@ func main() {
 		createConversations(db)
 		createEvents(db, round)
 		createRankings(db, finished, round)
+		createBlackMarket(db)
 	}
 
 	log.Info().Msg("Done Seeding")
@@ -494,6 +495,28 @@ func createEvents(db *gorm.DB, round *models.Round) {
 	})
 }
 
+func createBlackMarket(db *gorm.DB) {
+	log.Info().Msg("createBlackMarket")
+
+	db.Create(&models.BlackMarketAuction{
+		ItemID:  1,
+		Cost:    50,
+		Expires: time.Now().AddDate(0, 0, 3),
+	})
+
+	db.Create(&models.BlackMarketAuction{
+		ItemID:  1,
+		Cost:    50,
+		Expires: time.Now().AddDate(0, 0, 3),
+	})
+
+	db.Create(&models.BlackMarketPurchase{
+		MarketID:  1,
+		UserID:    1,
+		Purchased: time.Now(),
+	})
+}
+
 func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE user_units")
 	db.Exec("DROP TABLE user_rounds")
@@ -518,6 +541,8 @@ func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE messages")
 	db.Exec("DROP TABLE events")
 	db.Exec("DROP TABLE rankings")
+	db.Exec("DROP TABLE black_market_purchases")
+	db.Exec("DROP TABLE black_market_auctions")
 }
 
 func createConversations(db *gorm.DB) {

@@ -97,6 +97,8 @@ func RunMigrations(db *gorm.DB) {
 		&UserLog{},
 		&RoundResource{},
 		&RoundMarketResource{},
+		&BlackMarketAuction{},
+		&BlackMarketPurchase{},
 		&RoundUnit{},
 		&RoundBuilding{},
 		&Conversation{},
