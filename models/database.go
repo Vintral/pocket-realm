@@ -84,6 +84,7 @@ func RunMigrations(db *gorm.DB) {
 		&Unit{},
 		&Round{},
 		&Building{},
+		&Effect{},
 		&Item{},
 		&Resource{},
 		&NewsItem{},

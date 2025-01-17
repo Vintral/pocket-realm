@@ -71,10 +71,10 @@ func main() {
 		createUnits(db)
 		createBuildings(db)
 		createResources(db)
-		createItems(db)
+		item1, item2 := createItems(db)
 		round, finished := createRounds(db)
 		createOverrides(db)
-		createUsers(db, round)
+		createUsers(db, round, item1, item2)
 		createUserTables(db, round)
 		createShouts(db)
 		createConversations(db)
@@ -288,7 +288,7 @@ func createRounds(db *gorm.DB) (current *models.Round, finished *models.Round) {
 	return ret, round
 }
 
-func createUsers(db *gorm.DB, r *models.Round) {
+func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item) {
 	//================================//
 	// Users													//
 	//================================//
@@ -307,6 +307,9 @@ func createUsers(db *gorm.DB, r *models.Round) {
 	}
 	db.FirstOrCreate(&user)
 	// user.Join(context.Background(), &round)
+	user.AddItem(ctx, i1)
+	user.AddItem(ctx, i1)
+	user.AddItem(ctx, i2)
 
 	user = &models.User{
 		Email:    "jeffrey.heater0@gmail.com",
@@ -503,6 +506,7 @@ func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE units")
 	db.Exec("DROP TABLE users")
 	db.Exec("DROP TABLE buildings")
+	db.Exec("DROP TABLE effects")
 	db.Exec("DROP TABLE items")
 	db.Exec("DROP TABLE rounds")
 	db.Exec("DROP TABLE resources")
@@ -881,15 +885,37 @@ func createUnits(db *gorm.DB) {
 	})
 }
 
-func createItems(db *gorm.DB) {
+func createItems(db *gorm.DB) (item1 *models.Item, item2 *models.Item) {
 	//================================//
 	// Items													//
 	//================================//
 	fmt.Println("Seeding Items")
-	db.Create(&models.Item{
-		Name:   "Hourglass",
-		Plural: "Hourglasses",
+
+	item1 = &models.Item{
+		Name:   "Small Hourglass",
+		Plural: "Small Hourglasses",
+	}
+	db.Create(item1)
+	db.Create(&models.Effect{
+		ItemID: item1.ID,
+		Type:   "user",
+		Name:   "energy",
+		Amount: 10,
 	})
+
+	item2 = &models.Item{
+		Name:   "Crate of Grain",
+		Plural: "Crates of Grain",
+	}
+	db.Create(item2)
+	db.Create(&models.Effect{
+		ItemID: item2.ID,
+		Type:   "resource",
+		Name:   "food",
+		Amount: 50,
+	})
+
+	return
 }
 
 func createRules(db *gorm.DB) {
