@@ -1,7 +1,11 @@
 package models
 
 import (
+	"context"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 )
 
 type UndergroundMarketPurchase struct {
@@ -10,6 +14,50 @@ type UndergroundMarketPurchase struct {
 	MarketID  uint      `json:"black_market_id"`
 	UserID    uint      `json:"user_id"`
 	Purchased time.Time `json:"purchased"`
+}
+
+func BuyAuction(baseContext context.Context, user *User, guid uuid.UUID) bool {
+	ctx, span := Tracer.Start(baseContext, "buy-auction")
+	defer span.End()
+
+	log.Info().Uint("user-id", user.ID).Str("auction", guid.String()).Msg("BuyAuction")
+
+	var auction *UndergroundMarketAuction
+	db.WithContext(ctx).Where("guid = ?", guid.String()).First(&auction)
+
+	log.Info().Any("auction", auction).Msg("Loaded Auction")
+	if auction.GUID == uuid.Nil {
+		return false
+	}
+
+	var purchase string
+	db.WithContext(ctx).Table("underground_market_purchases").Select("purchased").Where("market_id = ? AND user_id = ?", auction.ID, user.ID).Scan(&purchase)
+	log.Info().Int("length", len(purchase)).Str("purchased", purchase).Msg("Retrieved Purchase")
+	if len(purchase) > 0 {
+		return false
+	}
+
+	if user.TakeResource(ctx, "gold", int(auction.Cost)) {
+		if user.AddItem(ctx, GetItemByID(ctx, int(auction.ItemID))) {
+			if result := db.WithContext(ctx).Save(&UndergroundMarketPurchase{
+				MarketID:  auction.ID,
+				UserID:    user.ID,
+				Purchased: time.Now(),
+			}); result.Error != nil {
+				log.Error().AnErr("error", result.Error).Msg("Error Adding Auction Purchase")
+				return false
+			}
+
+			log.Info().Int("user-id", int(user.ID)).Int("auction-id", int(auction.ID)).Msg("Bought Auction")
+			return true
+		} else {
+			if user.GiveResource(ctx, "gold", int(auction.Cost)) {
+				log.Error().Str("resource", "gold").Uint("user-id", user.ID).Int("amount", int(auction.Cost)).Msg("Error Crediting Resource")
+			}
+		}
+	}
+
+	return false
 }
 
 // func BuyResource(baseContext context.Context, user *User, quantity int, resource uuid.UUID) bool {

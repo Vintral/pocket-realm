@@ -20,6 +20,7 @@ type Item struct {
 	Description string    `json:"description"`
 }
 
+var items []*Item
 var itemsById = make(map[int]*Item)
 var itemsByGuid = make(map[uuid.UUID]*Item)
 
@@ -122,4 +123,17 @@ func GetItemByGUID(baseContext context.Context, guid uuid.UUID) *Item {
 
 	val = itemsByGuid[guid]
 	return val
+}
+
+func GetItems(baseContext context.Context) []*Item {
+	ctx, span := Tracer.Start(baseContext, "get-items")
+	defer span.End()
+
+	if len(items) == 0 {
+		log.Info().Msg("GetItems")
+		db.WithContext(ctx).Find(&items)
+		log.Info().Int("item-count", len(items)).Msg("Loaded Items")
+	}
+
+	return items
 }

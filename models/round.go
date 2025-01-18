@@ -403,11 +403,13 @@ func LoadRoundForUser(base context.Context) {
 
 	if round, err := LoadRoundById(ctx, user.RoundID); err == nil {
 		user.Connection.WriteJSON(struct {
-			Type  string `json:"type"`
-			Round *Round `json:"round"`
+			Type  string  `json:"type"`
+			Round *Round  `json:"round"`
+			Items []*Item `json:"items"`
 		}{
 			Type:  "ROUND",
 			Round: round,
+			Items: GetItems(ctx),
 		})
 
 		user.Round = round

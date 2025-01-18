@@ -518,7 +518,7 @@ func createBlackMarket(db *gorm.DB) {
 	db.Create(&models.UndergroundMarketAuction{
 		ItemID:  1,
 		Cost:    50,
-		Expires: time.Now().AddDate(0, 0, 3),
+		Expires: time.Now().Add(time.Hour * 5), // * time.Duration(5)),
 	})
 
 	db.Create(&models.UndergroundMarketPurchase{

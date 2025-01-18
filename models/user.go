@@ -892,6 +892,81 @@ func (user *User) TakeItem(baseContext context.Context, item *Item) bool {
 	return user.updateItems(ctx, nil)
 }
 
+func (user *User) TakeResource(ctx context.Context, resource string, amount int) bool {
+	ctx, span := Tracer.Start(ctx, "take-resource")
+	defer span.End()
+
+	log.Info().Str("resource", resource).Int("amount", amount).Any("user-resource", user.RoundData).Msg("user.TakeResource")
+
+	switch resource {
+	case "gold":
+		if user.RoundData.Gold < float64(amount) {
+			return false
+		}
+		user.RoundData.Gold -= float64(amount)
+	case "food":
+		if user.RoundData.Food < float64(amount) {
+			return false
+		}
+		user.RoundData.Food -= float64(amount)
+	case "wood":
+		if user.RoundData.Wood < float64(amount) {
+			return false
+		}
+		user.RoundData.Wood -= float64(amount)
+	case "stone":
+		if user.RoundData.Stone < float64(amount) {
+			return false
+		}
+		user.RoundData.Stone -= float64(amount)
+	case "metal":
+		if user.RoundData.Metal < float64(amount) {
+			return false
+		}
+		user.RoundData.Metal -= float64(amount)
+	case "mana":
+		if user.RoundData.Mana < float64(amount) {
+			return false
+		}
+		user.RoundData.Mana -= float64(amount)
+	case "faith":
+		if user.RoundData.Faith < float64(amount) {
+			return false
+		}
+		user.RoundData.Faith -= float64(amount)
+	}
+
+	log.Info().Msg("Resource Taken")
+	return user.UpdateRound(ctx, nil)
+}
+
+func (user *User) GiveResource(ctx context.Context, resource string, amount int) bool {
+	ctx, span := Tracer.Start(ctx, "give-resource")
+	defer span.End()
+
+	log.Info().Str("resource", resource).Int("amount", amount).Any("user-resource", user.RoundData).Msg("user.GiveResource")
+
+	switch resource {
+	case "gold":
+		user.RoundData.Gold += float64(amount)
+	case "food":
+		user.RoundData.Food += float64(amount)
+	case "wood":
+		user.RoundData.Wood += float64(amount)
+	case "stone":
+		user.RoundData.Stone += float64(amount)
+	case "metal":
+		user.RoundData.Metal += float64(amount)
+	case "mana":
+		user.RoundData.Mana += float64(amount)
+	case "faith":
+		user.RoundData.Faith += float64(amount)
+	}
+
+	log.Info().Msg("Resource Given")
+	return user.UpdateRound(ctx, nil)
+}
+
 func GetUserIdForName(ctx context.Context, name string) uint {
 	var user *User
 	if err := db.WithContext(ctx).Where("username = ?", name).First(&user).Error; err != nil {

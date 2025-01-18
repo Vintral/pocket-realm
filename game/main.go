@@ -275,6 +275,8 @@ func listen(conn *websocket.Conn) {
 			actions.Build(ctx)
 		case "BUY_RESOURCE":
 			market.BuyResource(ctx)
+		case "BUY_AUCTION":
+			market.BuyAuction(ctx)
 		case "EXPLORE":
 			actions.Explore(ctx)
 		case "GATHER":
