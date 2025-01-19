@@ -61,7 +61,7 @@ func BuyAuction(baseContext context.Context) {
 	log.Info().Bool("success", success).Msg("BuyAuction Call Finished")
 
 	user.SendMessage(BuyAuctionResponse{
-		Type:    "BUY_ACTION_RESULT",
+		Type:    "BUY_AUCTION_RESULT",
 		Success: success,
 	})
 }
