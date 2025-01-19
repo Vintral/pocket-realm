@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/redis/go-redis/v9"
+	redisDef "github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
-var rdb *redis.Client
+var rdb *redisDef.Client
 
-func Instance(tp *trace.TracerProvider) (*redis.Client, error) {
+func Instance(tp *trace.TracerProvider) (*redisDef.Client, error) {
 	log.Trace().Msg("realmRedis: Instance")
 
 	// Use cached value if we can
@@ -29,7 +29,7 @@ func Instance(tp *trace.TracerProvider) (*redis.Client, error) {
 	REDIS_PORT := os.Getenv("REDIS_PORT")
 
 	log.Warn().Msg("Redis @ " + REDIS_HOST + ":" + fmt.Sprint(REDIS_PORT))
-	rdb = redis.NewClient(&redis.Options{
+	rdb = redisDef.NewClient(&redisDef.Options{
 		Addr:     REDIS_HOST + ":" + REDIS_PORT,
 		Password: "", // no password set
 		DB:       0,  // use default DB
