@@ -306,6 +306,16 @@ func (round *Round) GetUnitById(id uint) *Unit {
 	return nil
 }
 
+func (round *Round) GetBuildingById(id uint) *Building {
+	log.Debug().Msg("GetBuildingById:" + fmt.Sprint(id))
+
+	if building, ok := round.MapBuildingsById[id]; ok {
+		return building
+	}
+
+	return nil
+}
+
 func (round *Round) GetBuildingByGuid(guid string) *Building {
 	log.Debug().Msg("GetBuildingByGuid:" + guid)
 
@@ -517,8 +527,13 @@ func GetActiveRounds(baseContext context.Context, user *User, c chan []*Round) {
 
 	rounds := []*Round{}
 	for _, round := range activeRounds {
+		log.Info().Any("round", round.ID).Msg("Process Round")
 		round = round.Clone()
-		round.UserRank = getRank(ctx, int(user.ID), round)
+
+		log.Info().Any("round", round.ID).Msg("Cloned Round")
+		if user != nil {
+			round.UserRank = getRank(ctx, int(user.ID), round)
+		}
 		rounds = append(rounds, round)
 	}
 	log.Info().Msg("GetActiveRounds - Done")

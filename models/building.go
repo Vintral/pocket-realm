@@ -128,6 +128,27 @@ func (building *Building) takeCost(user *User, amount float64) {
 	}
 }
 
+func (building *Building) GetUpkeep(field string) uint {
+	switch field {
+	case "gold":
+		return building.UpkeepGold
+	case "food":
+		return building.UpkeepFood
+	case "wood":
+		return building.UpkeepWood
+	case "stone":
+		return building.UpkeepStone
+	case "metal":
+		return building.UpkeepMetal
+	case "faith":
+		return building.UpkeepFaith
+	case "mana":
+		return building.UpkeepMana
+	}
+
+	return 0
+}
+
 func (building *Building) Build(ctx context.Context, user *User, energy uint) (float64, error) {
 	var err error
 	var amount float64

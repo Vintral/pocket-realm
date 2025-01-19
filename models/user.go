@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"gorm.io/gorm"
 )
@@ -650,21 +651,25 @@ func (user *User) getDeficit(field string) int {
 func (user *User) ProcessBankruptcy(ctx context.Context, field string) bool {
 	log.Warn().Msg("ProcessBankruptcy: " + field)
 
+	if user.getDeficit(field) >= 0 {
+		user.zeroField(field)
+
+		wg := new(sync.WaitGroup)
+		wg.Add(3)
+		user.updateUnits(ctx, wg)
+		user.updateBuildings(ctx, wg)
+		user.UpdateRound(ctx, wg)
+		wg.Wait()
+		return true
+	}
+
+	user.Dump()
+
 	picker := utilities.Picker{}
 	for _, u := range user.Units {
 		unit := user.Round.GetUnitById(u.UnitID)
 		picker.Add(unit.GetUpkeep(field)*uint(u.Quantity), u.UnitID)
 	}
-
-	if user.getDeficit(field) >= 0 {
-		user.zeroField(field)
-		user.updateUnits(ctx, nil)
-		user.UpdateRound(ctx, nil)
-
-		return true
-	}
-
-	user.Dump()
 
 	choice := picker.Choose()
 	for _, u := range user.Units {
@@ -692,11 +697,53 @@ func (user *User) ProcessBankruptcy(ctx context.Context, field string) bool {
 		}
 	}
 
+	picker = utilities.Picker{}
+	for _, b := range user.Buildings {
+		building := user.Round.GetUnitById(b.BuildingID)
+		picker.Add(building.GetUpkeep(field)*uint(b.Quantity), b.BuildingID)
+	}
+
+	choice = picker.Choose()
+	for _, b := range user.Buildings {
+		log.Trace().Msg("Choice " + fmt.Sprint(choice) + " ::: " + fmt.Sprint(b.BuildingID))
+		if b.BuildingID == choice {
+			building := user.Round.GetBuildingById(b.BuildingID)
+			deficit := user.getDeficit(field)
+
+			count := int(math.Ceil(-float64(deficit) / float64(building.GetUpkeep(field))))
+			log.Warn().Msg("Deficit: " + fmt.Sprint(deficit))
+			fmt.Println(-float64(deficit) / float64(building.GetUpkeep(field)))
+			log.Warn().Msg("Unit Upkeep: " + fmt.Sprint(building.GetUpkeep(field)))
+
+			if count == 0 {
+				log.Panic().Msg("Count is 0")
+			}
+
+			log.Warn().Msg("Get rid of " + fmt.Sprint(count) + " " + building.Name)
+
+			taken := user.takeBuilding(ctx, int(b.BuildingID), count)
+			if taken {
+				user.updateTicks(ctx)
+				return user.ProcessBankruptcy(ctx, field)
+			}
+		}
+	}
+
 	log.Info().Msg("Deficit Not handled: " + fmt.Sprint(choice))
 	return false
 }
 
 func (user *User) takeUnit(ctx context.Context, unitid int, amount int) bool {
+	_, span := Tracer.Start(ctx, "take-unit")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Int("unit", unitid),
+		attribute.Int("amount", amount),
+	)
+
+	log.Info().Int("unit", unitid).Int("amount", amount).Msg("user.takeUnit")
+
 	for _, u := range user.Units {
 		if u.UnitID == uint(unitid) {
 			u.Quantity -= float64(amount)
@@ -705,11 +752,49 @@ func (user *User) takeUnit(ctx context.Context, unitid int, amount int) bool {
 				u.Quantity = 0
 			}
 
-			user.LogEvent("Took "+fmt.Sprint(amount)+" "+user.Round.GetUnitById(u.UnitID).Name, user.Round.GUID)
+			go user.LogEvent("Took "+fmt.Sprint(amount)+" "+user.Round.GetUnitById(u.UnitID).Name, user.Round.GUID)
+			span.SetAttributes(
+				attribute.Bool("success", true),
+			)
 			return true
 		}
 	}
 
+	span.SetAttributes(
+		attribute.Bool("success", false),
+	)
+	return false
+}
+
+func (user *User) takeBuilding(ctx context.Context, buildingid int, amount int) bool {
+	_, span := Tracer.Start(ctx, "take-building")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Int("building", buildingid),
+		attribute.Int("amount", amount),
+	)
+	log.Info().Int("building", buildingid).Int("amount", amount).Uint("user", user.ID).Msg("user.takeBuilding")
+
+	for _, b := range user.Buildings {
+		if b.BuildingID == uint(buildingid) {
+			b.Quantity -= float64(amount)
+
+			if b.Quantity <= 0 {
+				b.Quantity = 0
+			}
+
+			go user.LogEvent("Took "+fmt.Sprint(amount)+" "+user.Round.GetBuildingById(b.BuildingID).Name, user.Round.GUID)
+			span.SetAttributes(
+				attribute.Bool("success", true),
+			)
+			return true
+		}
+	}
+
+	span.SetAttributes(
+		attribute.Bool("success", false),
+	)
 	return false
 }
 
