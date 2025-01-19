@@ -1,7 +1,7 @@
 //module realm
 module github.com/Vintral/pocket-realm/game
 
-go 1.22
+go 1.22.0
 
 toolchain go1.22.4
 
@@ -9,13 +9,14 @@ require (
 	github.com/Vintral/pocket-realm/models v0.0.0-20240804073019-601bc693a7f1
 	github.com/Vintral/pocket-realm/redis v0.0.0-20240804073019-601bc693a7f1
 	github.com/rs/zerolog v1.33.0
-	go.opentelemetry.io/otel v1.28.0
-	go.opentelemetry.io/otel/sdk v1.28.0
+	go.opentelemetry.io/otel v1.34.0
+	go.opentelemetry.io/otel/sdk v1.34.0
 	google.golang.org/grpc v1.65.0
 )
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/Vintral/pocket-realm/utils v0.0.0-20250119175216-42b8c913f6b4 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
@@ -26,9 +27,10 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/uptrace/opentelemetry-go-extra/otelsql v0.3.1 // indirect
+	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.28.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
-	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240730163845-b1a4ccb954bf // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240730163845-b1a4ccb954bf // indirect
@@ -44,8 +46,8 @@ require (
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/uptrace/opentelemetry-go-extra/otelgorm v0.3.1
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.28.0
-	go.opentelemetry.io/otel/metric v1.28.0 // indirect
-	go.opentelemetry.io/otel/trace v1.28.0
+	go.opentelemetry.io/otel/metric v1.34.0 // indirect
+	go.opentelemetry.io/otel/trace v1.34.0
 	golang.org/x/net v0.27.0 // indirect
 	gorm.io/driver/mysql v1.5.7
 	gorm.io/gorm v1.25.11
