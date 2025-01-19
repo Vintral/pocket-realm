@@ -21,7 +21,7 @@ import (
 	"github.com/Vintral/pocket-realm/game/social"
 	"github.com/Vintral/pocket-realm/models"
 	realmRedis "github.com/Vintral/pocket-realm/redis"
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/rs/zerolog"
@@ -259,9 +259,9 @@ func listen(conn *websocket.Conn) {
 
 		log.Info().Msg("Message:" + string(messageContent))
 
-		ctx := context.WithValue(context.Background(), utilities.KeyTraceProvider{}, traceProvider)
-		ctx = context.WithValue(ctx, utilities.KeyUser{}, user)
-		ctx = context.WithValue(ctx, utilities.KeyPayload{}, messageContent)
+		ctx := context.WithValue(context.Background(), utils.KeyTraceProvider{}, traceProvider)
+		ctx = context.WithValue(ctx, utils.KeyUser{}, user)
+		ctx = context.WithValue(ctx, utils.KeyPayload{}, messageContent)
 
 		var payload payloads.Payload
 		err = json.Unmarshal(messageContent, &payload)

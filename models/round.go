@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Vintral/pocket-realm/game/payloads"
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"
@@ -406,10 +406,10 @@ func LoadRoundByGuid(ctx context.Context, guid uuid.UUID) (*Round, error) {
 }
 
 func LoadRoundForUser(base context.Context) {
-	ctx, span := utilities.StartSpan(base, "load-round-by-user")
+	ctx, span := utils.StartSpan(base, "load-round-by-user")
 	defer span.End()
 
-	user := base.Value(utilities.KeyUser{}).(*User)
+	user := base.Value(utils.KeyUser{}).(*User)
 
 	if round, err := LoadRoundById(ctx, user.RoundID); err == nil {
 		user.Connection.WriteJSON(struct {

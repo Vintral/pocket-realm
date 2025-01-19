@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Vintral/pocket-realm/models"
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"
@@ -58,17 +58,17 @@ func dispatchErrorSendingMessage(ctx context.Context, user *models.User) {
 func SendMessage(base context.Context) {
 	log.Info().Msg("sendMessage")
 
-	ctx, span := utilities.StartSpan(base, "send-message")
+	ctx, span := utils.StartSpan(base, "send-message")
 	defer span.End()
 
 	var payload SendMessagePayload
-	err := json.Unmarshal(base.Value(utilities.KeyPayload{}).([]byte), &payload)
+	err := json.Unmarshal(base.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	user := base.Value(utilities.KeyUser{}).(*models.User)
+	user := base.Value(utils.KeyUser{}).(*models.User)
 
 	span.SetAttributes(attribute.String("From", user.Username), attribute.String("To", payload.To))
 
@@ -118,17 +118,17 @@ func SendMessage(base context.Context) {
 }
 
 func GetMessages(base context.Context) {
-	_, span := utilities.StartSpan(base, "get-messages")
+	_, span := utils.StartSpan(base, "get-messages")
 	defer span.End()
 
 	var payload GetMessagesPayload
-	err := json.Unmarshal(base.Value(utilities.KeyPayload{}).([]byte), &payload)
+	err := json.Unmarshal(base.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	user := base.Value(utilities.KeyUser{}).(*models.User)
+	user := base.Value(utils.KeyUser{}).(*models.User)
 	fmt.Println("Get Messages for:", payload.Conversation)
 
 	span.SetAttributes(attributes.String("conversation", payload.Conversation.String()))
@@ -170,7 +170,7 @@ func GetMessages(base context.Context) {
 }
 
 func GetConversations(base context.Context) {
-	ctx, span := utilities.StartSpan(base, "get-conversations")
+	ctx, span := utils.StartSpan(base, "get-conversations")
 	defer span.End()
 
 	// var payload payloads.ExplorePayload
@@ -180,7 +180,7 @@ func GetConversations(base context.Context) {
 	// 	return
 	// }
 
-	user := base.Value(utilities.KeyUser{}).(*models.User)
+	user := base.Value(utils.KeyUser{}).(*models.User)
 	fmt.Println("Get Conversations for:", user.ID)
 
 	payload := struct {

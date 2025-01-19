@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Vintral/pocket-realm/models"
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 
 	"go.opentelemetry.io/otel/codes"
 )
@@ -41,20 +41,20 @@ func dispatchMessage(shout ShoutDataPayload) {
 }
 
 func SubscribeShouts(base context.Context) {
-	_, span := utilities.StartSpan(base, "subscribe-shouts")
+	_, span := utils.StartSpan(base, "subscribe-shouts")
 	defer span.End()
 
-	user := base.Value(utilities.KeyUser{}).(*models.User)
+	user := base.Value(utils.KeyUser{}).(*models.User)
 	subscribers[user.ID] = user
 
 	fmt.Println("Shout Subscribers:", len(subscribers))
 }
 
 func UnsubscribeShouts(base context.Context) {
-	_, span := utilities.StartSpan(base, "unsubscribe-shouts")
+	_, span := utils.StartSpan(base, "unsubscribe-shouts")
 	defer span.End()
 
-	user := base.Value(utilities.KeyUser{}).(*models.User)
+	user := base.Value(utils.KeyUser{}).(*models.User)
 	delete(subscribers, user.ID)
 
 	fmt.Println("Shout Subscribers:", len(subscribers))
@@ -63,17 +63,17 @@ func UnsubscribeShouts(base context.Context) {
 func SendShout(base context.Context) {
 	fmt.Println("SendShout")
 
-	_, span := utilities.StartSpan(base, "send-shout")
+	_, span := utils.StartSpan(base, "send-shout")
 	defer span.End()
 
 	var payload ShoutPayload
-	err := json.Unmarshal(base.Value(utilities.KeyPayload{}).([]byte), &payload)
+	err := json.Unmarshal(base.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	user := base.Value(utilities.KeyUser{}).(*models.User)
+	user := base.Value(utils.KeyUser{}).(*models.User)
 
 	var shout *models.Shout
 	if err = shout.Create(user.ID, payload.Shout); err == nil {

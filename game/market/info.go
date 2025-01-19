@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Vintral/pocket-realm/models"
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 
 	"github.com/rs/zerolog/log"
 )
@@ -18,9 +18,9 @@ type GetMarketInfoResult struct {
 }
 
 func GetInfo(baseContext context.Context) {
-	user := baseContext.Value(utilities.KeyUser{}).(*models.User)
+	user := baseContext.Value(utils.KeyUser{}).(*models.User)
 
-	ctx, span := utilities.StartSpan(baseContext, "market-info")
+	ctx, span := utils.StartSpan(baseContext, "market-info")
 	defer span.End()
 
 	log.Info().Msg("GetMarketInto: " + fmt.Sprint(user.ID))

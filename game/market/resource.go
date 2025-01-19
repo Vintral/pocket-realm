@@ -7,19 +7,19 @@ import (
 
 	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/models"
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 
 	"github.com/rs/zerolog/log"
 )
 
 func BuyResource(baseContext context.Context) {
-	user := baseContext.Value(utilities.KeyUser{}).(*models.User)
+	user := baseContext.Value(utils.KeyUser{}).(*models.User)
 
-	ctx, span := utilities.StartSpan(baseContext, "market-buy-resource")
+	ctx, span := utils.StartSpan(baseContext, "market-buy-resource")
 	defer span.End()
 
 	var payload payloads.MarketTransactionPayload
-	err := json.Unmarshal(baseContext.Value(utilities.KeyPayload{}).([]byte), &payload)
+	err := json.Unmarshal(baseContext.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		log.Warn().AnErr("Err", err).Msg(err.Error())
 		return
@@ -41,13 +41,13 @@ func BuyResource(baseContext context.Context) {
 }
 
 func SellResource(baseContext context.Context) {
-	user := baseContext.Value(utilities.KeyUser{}).(*models.User)
+	user := baseContext.Value(utils.KeyUser{}).(*models.User)
 
-	ctx, span := utilities.StartSpan(baseContext, "market-sell-resource")
+	ctx, span := utils.StartSpan(baseContext, "market-sell-resource")
 	defer span.End()
 
 	var payload payloads.MarketTransactionPayload
-	err := json.Unmarshal(baseContext.Value(utilities.KeyPayload{}).([]byte), &payload)
+	err := json.Unmarshal(baseContext.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		log.Warn().AnErr("Err", err).Msg(err.Error())
 		return

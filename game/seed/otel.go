@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 	"github.com/rs/zerolog/log"
 )
 
@@ -46,8 +46,8 @@ func setupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, tr
 	}
 
 	// Set up resource.
-	OTEL_SERVICE := utilities.GetEnv("OTEL_SERVICE", "default-service")
-	OTEL_VERSION := utilities.GetEnv("OTEL_VERSION", "0.0.1")
+	OTEL_SERVICE := utils.GetEnv("OTEL_SERVICE", "default-service")
+	OTEL_VERSION := utils.GetEnv("OTEL_VERSION", "0.0.1")
 
 	fmt.Println("OTEL_SERVICE:", OTEL_SERVICE)
 	res, err := newResource(OTEL_SERVICE, OTEL_VERSION)
@@ -107,8 +107,8 @@ func newTraceProvider(res *resource.Resource, ctx context.Context) (*trace.Trace
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(time.Second*timeOut))
 	defer cancel()
 
-	OTEL_EXPORTER_HOST := utilities.GetEnv("OTEL_EXPORTER_HOST", "127.0.0.1")
-	OTEL_EXPORTER_PORT := utilities.GetEnv("OTEL_EXPORTER_PORT", "4317")
+	OTEL_EXPORTER_HOST := utils.GetEnv("OTEL_EXPORTER_HOST", "127.0.0.1")
+	OTEL_EXPORTER_PORT := utils.GetEnv("OTEL_EXPORTER_PORT", "4317")
 
 	log.Info().Msg("Connection Collector: " + OTEL_EXPORTER_HOST + ":" + OTEL_EXPORTER_PORT)
 

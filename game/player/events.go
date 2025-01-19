@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Vintral/pocket-realm/models"
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 	"github.com/google/uuid"
 
 	"github.com/rs/zerolog/log"
@@ -29,13 +29,13 @@ type GetEventsResult struct {
 }
 
 func HandleMarkEventSeen(baseContext context.Context) {
-	user := baseContext.Value(utilities.KeyUser{}).(*models.User)
+	user := baseContext.Value(utils.KeyUser{}).(*models.User)
 
 	// ctx, span := utilities.StartSpan(baseContext, "mark-event-seen")
 	// defer span.End()
 
 	var payload MarkEventSeenRequest
-	err := json.Unmarshal(baseContext.Value(utilities.KeyPayload{}).([]byte), &payload)
+	err := json.Unmarshal(baseContext.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -61,13 +61,13 @@ func HandleMarkEventSeen(baseContext context.Context) {
 }
 
 func GetEvents(baseContext context.Context) {
-	user := baseContext.Value(utilities.KeyUser{}).(*models.User)
+	user := baseContext.Value(utils.KeyUser{}).(*models.User)
 
-	ctx, span := utilities.StartSpan(baseContext, "player-get-events")
+	ctx, span := utils.StartSpan(baseContext, "player-get-events")
 	defer span.End()
 
 	var payload GetEventsRequest
-	err := json.Unmarshal(baseContext.Value(utilities.KeyPayload{}).([]byte), &payload)
+	err := json.Unmarshal(baseContext.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		fmt.Println(err)
 		return
