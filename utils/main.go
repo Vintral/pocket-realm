@@ -1,4 +1,4 @@
-package utilities
+package realm_utilities
 
 import (
 	"context"

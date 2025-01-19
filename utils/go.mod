@@ -1,4 +1,4 @@
-module github.com/Vintral/pocket-realm/utilities
+module github.com/Vintral/pocket-realm/utils
 
 go 1.22.0
 
