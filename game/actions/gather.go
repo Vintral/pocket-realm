@@ -10,7 +10,7 @@ import (
 
 	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/models"
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 )
 
 func gatherStat(energy int, before float64, tick float64) (float64, float64, float64) {
@@ -27,17 +27,17 @@ func Gather(base context.Context) {
 	fmt.Println("Gather")
 
 	fmt.Println(base)
-	fmt.Println("TraceProvider:", base.Value(utilities.KeyTraceProvider{}))
-	fmt.Println("User:", base.Value(utilities.KeyUser{}))
-	fmt.Println("Packet:", base.Value(utilities.KeyPayload{}))
+	fmt.Println("TraceProvider:", base.Value(utils.KeyTraceProvider{}))
+	fmt.Println("User:", base.Value(utils.KeyUser{}))
+	fmt.Println("Packet:", base.Value(utils.KeyPayload{}))
 
-	ctx, span := utilities.StartSpan(base, "gather")
+	ctx, span := utils.StartSpan(base, "gather")
 	defer span.End()
 
-	user := base.Value(utilities.KeyUser{}).(*models.User)
+	user := base.Value(utils.KeyUser{}).(*models.User)
 
 	var payload payloads.GatherPayload
-	err := json.Unmarshal(base.Value(utilities.KeyPayload{}).([]byte), &payload)
+	err := json.Unmarshal(base.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		fmt.Println(err)
 		user.SendError(models.SendErrorParams{Context: &ctx, Type: "gather", Message: "gather-1"})

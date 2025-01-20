@@ -10,15 +10,15 @@ import (
 
 	"github.com/Vintral/pocket-realm/game/payloads"
 	realmRedis "github.com/Vintral/pocket-realm/redis"
-	"github.com/Vintral/pocket-realm/utilities"
-	redisDef "github.com/redis/go-redis/v9"
+	realmUtils "github.com/Vintral/pocket-realm/utils"
 	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	redisDef "github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"gorm.io/gorm"
+	gorm "gorm.io/gorm"
 )
 
 // var (
@@ -199,13 +199,13 @@ func (user *User) updateTicks(ctx context.Context) {
 		quantity := math.Floor(unit.Quantity)
 
 		if quantity > 0 {
-			user.RoundData.TickFaith -= utilities.RoundFloat(quantity*float64(baseUnit.UpkeepFaith), 2)
-			user.RoundData.TickFood -= utilities.RoundFloat(quantity*float64(baseUnit.UpkeepFood), 2)
-			user.RoundData.TickGold -= utilities.RoundFloat(quantity*float64(baseUnit.UpkeepGold), 2)
-			user.RoundData.TickMana -= utilities.RoundFloat(quantity*float64(baseUnit.UpkeepMana), 2)
-			user.RoundData.TickMetal -= utilities.RoundFloat(quantity*float64(baseUnit.UpkeepMetal), 2)
-			user.RoundData.TickStone -= utilities.RoundFloat(quantity*float64(baseUnit.UpkeepStone), 2)
-			user.RoundData.TickWood -= utilities.RoundFloat(quantity*float64(baseUnit.UpkeepWood), 2)
+			user.RoundData.TickFaith -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepFaith), 2)
+			user.RoundData.TickFood -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepFood), 2)
+			user.RoundData.TickGold -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepGold), 2)
+			user.RoundData.TickMana -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepMana), 2)
+			user.RoundData.TickMetal -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepMetal), 2)
+			user.RoundData.TickStone -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepStone), 2)
+			user.RoundData.TickWood -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepWood), 2)
 		}
 	}
 
@@ -214,16 +214,16 @@ func (user *User) updateTicks(ctx context.Context) {
 		quantity := math.Floor(building.Quantity)
 
 		if quantity > 0 {
-			val := utilities.RoundFloat(math.Floor(building.Quantity*float64(baseBuilding.BonusValue)), 2)
+			val := realmUtils.RoundFloat(math.Floor(building.Quantity*float64(baseBuilding.BonusValue)), 2)
 			user.updateTickField(baseBuilding.BonusField, val)
 
-			user.RoundData.TickFaith -= utilities.RoundFloat(quantity*float64(baseBuilding.UpkeepFaith), 2)
-			user.RoundData.TickFood -= utilities.RoundFloat(quantity*float64(baseBuilding.UpkeepFood), 2)
-			user.RoundData.TickGold -= utilities.RoundFloat(quantity*float64(baseBuilding.UpkeepGold), 2)
-			user.RoundData.TickMana -= utilities.RoundFloat(quantity*float64(baseBuilding.UpkeepMana), 2)
-			user.RoundData.TickMetal -= utilities.RoundFloat(quantity*float64(baseBuilding.UpkeepMetal), 2)
-			user.RoundData.TickStone -= utilities.RoundFloat(quantity*float64(baseBuilding.UpkeepStone), 2)
-			user.RoundData.TickWood -= utilities.RoundFloat(quantity*float64(baseBuilding.UpkeepWood), 2)
+			user.RoundData.TickFaith -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepFaith), 2)
+			user.RoundData.TickFood -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepFood), 2)
+			user.RoundData.TickGold -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepGold), 2)
+			user.RoundData.TickMana -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepMana), 2)
+			user.RoundData.TickMetal -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepMetal), 2)
+			user.RoundData.TickStone -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepStone), 2)
+			user.RoundData.TickWood -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepWood), 2)
 		}
 	}
 }
@@ -508,7 +508,7 @@ func (user *User) updateField(field string, val float64) bool {
 
 // func (user *User) SendError(ctx context.Context, errorType string, message string) {
 func (user *User) SendError(params SendErrorParams) {
-	if span := utilities.GetSpan(*params.Context); span != nil {
+	if span := realmUtils.GetSpan(*params.Context); span != nil {
 		span.SetStatus(codes.Error, params.Message)
 		if params.Err != nil {
 			span.RecordError(params.Err)
@@ -665,7 +665,7 @@ func (user *User) ProcessBankruptcy(ctx context.Context, field string) bool {
 
 	user.Dump()
 
-	picker := utilities.Picker{}
+	picker := realmUtils.Picker{}
 	for _, u := range user.Units {
 		unit := user.Round.GetUnitById(u.UnitID)
 		picker.Add(unit.GetUpkeep(field)*uint(u.Quantity), u.UnitID)
@@ -697,7 +697,7 @@ func (user *User) ProcessBankruptcy(ctx context.Context, field string) bool {
 		}
 	}
 
-	picker = utilities.Picker{}
+	picker = realmUtils.Picker{}
 	for _, b := range user.Buildings {
 		building := user.Round.GetUnitById(b.BuildingID)
 		picker.Add(building.GetUpkeep(field)*uint(b.Quantity), b.BuildingID)

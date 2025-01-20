@@ -12,7 +12,7 @@ import (
 
 	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/models"
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -20,17 +20,17 @@ import (
 func Explore(baseCtx context.Context) {
 	fmt.Println("Explore")
 
-	ctx, span := utilities.StartSpan(baseCtx, "explore")
+	ctx, span := utils.StartSpan(baseCtx, "explore")
 	defer span.End()
 
 	var payload payloads.ExplorePayload
-	err := json.Unmarshal(baseCtx.Value(utilities.KeyPayload{}).([]byte), &payload)
+	err := json.Unmarshal(baseCtx.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	user := baseCtx.Value(utilities.KeyUser{}).(*models.User)
+	user := baseCtx.Value(utils.KeyUser{}).(*models.User)
 
 	if payload.Energy <= 0 {
 		user.SendError(models.SendErrorParams{Context: &ctx, Type: "explore", Message: "explore-1"})

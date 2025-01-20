@@ -10,7 +10,7 @@ import (
 
 	"github.com/Vintral/pocket-realm/models"
 	realmRedis "github.com/Vintral/pocket-realm/redis"
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 
@@ -140,7 +140,7 @@ func RetrieveRankings(base context.Context) {
 
 	log.Info().Msg("RetrieveRankings")
 
-	user := base.Value(utilities.KeyUser{}).(*models.User)
+	user := base.Value(utils.KeyUser{}).(*models.User)
 
 	c := make(chan []models.RankingSnapshot)
 	d := make(chan []models.RankingSnapshot)

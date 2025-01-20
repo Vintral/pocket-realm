@@ -17,7 +17,7 @@ import (
 	tracerDefinition "go.opentelemetry.io/otel/trace"
 
 	realmRedis "github.com/Vintral/pocket-realm/redis"
-	"github.com/redis/go-redis/v9"
+	redisDef "github.com/redis/go-redis/v9"
 
 	"github.com/go-co-op/gocron/v2"
 	"github.com/joho/godotenv"
@@ -26,7 +26,7 @@ import (
 
 var db *gorm.DB
 var tracer tracerDefinition.Tracer
-var redisClient *redis.Client
+var redisClient *redisDef.Client
 
 func buildTickField(field string) string {
 	var builder strings.Builder

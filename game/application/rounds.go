@@ -5,15 +5,15 @@ import (
 	"fmt"
 
 	"github.com/Vintral/pocket-realm/models"
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 	"github.com/rs/zerolog/log"
 )
 
 func GetRounds(baseCtx context.Context) {
-	ctx, span := utilities.StartSpan(baseCtx, "explore")
+	ctx, span := utils.StartSpan(baseCtx, "explore")
 	defer span.End()
 
-	user := baseCtx.Value(utilities.KeyUser{}).(*models.User)
+	user := baseCtx.Value(utils.KeyUser{}).(*models.User)
 
 	log.Info().Msg("GetRounds: " + fmt.Sprint(user.ID))
 

@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/Vintral/pocket-realm/models"
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 
 	"go.opentelemetry.io/otel/codes"
 )
@@ -26,17 +26,17 @@ type RecruitResult struct {
 func Recruit(base context.Context) {
 	fmt.Println("Recruit")
 
-	ctx, span := utilities.StartSpan(base, "build")
+	ctx, span := utils.StartSpan(base, "build")
 	defer span.End()
 
 	var payload RecruitPayload
-	err := json.Unmarshal(base.Value(utilities.KeyPayload{}).([]byte), &payload)
+	err := json.Unmarshal(base.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	user := base.Value(utilities.KeyUser{}).(*models.User)
+	user := base.Value(utils.KeyUser{}).(*models.User)
 
 	fmt.Println("Get Unit")
 	if unit := user.Round.GetUnitByGuid(payload.Unit); unit != nil {

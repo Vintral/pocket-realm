@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Vintral/pocket-realm/models"
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 	"github.com/google/uuid"
 
 	"github.com/rs/zerolog/log"
@@ -37,13 +37,13 @@ func joinRoundIfNeeded(baseContext context.Context, user *models.User, round *mo
 }
 
 func PlayRound(baseContext context.Context) {
-	user := baseContext.Value(utilities.KeyUser{}).(*models.User)
+	user := baseContext.Value(utils.KeyUser{}).(*models.User)
 
-	ctx, span := utilities.StartSpan(baseContext, "player-play-round")
+	ctx, span := utils.StartSpan(baseContext, "player-play-round")
 	defer span.End()
 
 	var payload PlayRoundRequest
-	err := json.Unmarshal(baseContext.Value(utilities.KeyPayload{}).([]byte), &payload)
+	err := json.Unmarshal(baseContext.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Vintral/pocket-realm/models"
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 )
 
 type LoadUserRequest struct {
@@ -22,17 +22,17 @@ type LoadUserResult struct {
 func Load(baseContext context.Context) {
 	fmt.Println("Load User")
 
-	fmt.Println("TraceProvider:", baseContext.Value(utilities.KeyTraceProvider{}))
-	fmt.Println("User:", baseContext.Value(utilities.KeyUser{}))
-	fmt.Println("Packet:", baseContext.Value(utilities.KeyPayload{}))
+	fmt.Println("TraceProvider:", baseContext.Value(utils.KeyTraceProvider{}))
+	fmt.Println("User:", baseContext.Value(utils.KeyUser{}))
+	fmt.Println("Packet:", baseContext.Value(utils.KeyPayload{}))
 
-	user := baseContext.Value(utilities.KeyUser{}).(*models.User)
+	user := baseContext.Value(utils.KeyUser{}).(*models.User)
 
-	_, span := utilities.StartSpan(baseContext, "user-load")
+	_, span := utils.StartSpan(baseContext, "user-load")
 	defer span.End()
 
 	var payload LoadUserRequest
-	err := json.Unmarshal(baseContext.Value(utilities.KeyPayload{}).([]byte), &payload)
+	err := json.Unmarshal(baseContext.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		fmt.Println(err)
 		return

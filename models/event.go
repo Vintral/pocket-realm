@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
@@ -91,7 +91,7 @@ func LoadEvents(baseContext context.Context, userid int, round uuid.UUID, page i
 }
 
 func MarkEventSeen(baseContext context.Context, evt uuid.UUID) {
-	user := baseContext.Value(utilities.KeyUser{}).(*User)
+	user := baseContext.Value(utils.KeyUser{}).(*User)
 
 	ctx, span := Tracer.Start(baseContext, "mark-event-seen")
 	defer span.End()
