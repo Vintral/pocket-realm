@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/Vintral/pocket-realm/models"
-	"github.com/Vintral/pocket-realm/utilities"
+	"github.com/Vintral/pocket-realm/utils"
 	"github.com/google/uuid"
 
 	"github.com/rs/zerolog/log"
@@ -27,10 +27,10 @@ type BuyAuctionResponse struct {
 }
 
 func GetUndergroundAuctions(baseContext context.Context) {
-	ctx, span := utilities.StartSpan(baseContext, "get-underground-auctions")
+	ctx, span := utils.StartSpan(baseContext, "get-underground-auctions")
 	defer span.End()
 
-	user := baseContext.Value(utilities.KeyUser{}).(*models.User)
+	user := baseContext.Value(utils.KeyUser{}).(*models.User)
 
 	log.Info().Uint("user-id", user.ID).Msg("getUndergroundAuctions")
 
@@ -43,13 +43,13 @@ func GetUndergroundAuctions(baseContext context.Context) {
 }
 
 func BuyAuction(baseContext context.Context) {
-	ctx, span := utilities.StartSpan(baseContext, "buy-auction")
+	ctx, span := utils.StartSpan(baseContext, "buy-auction")
 	defer span.End()
 
-	user := baseContext.Value(utilities.KeyUser{}).(*models.User)
+	user := baseContext.Value(utils.KeyUser{}).(*models.User)
 
 	var payload BuyAuctionPayload
-	err := json.Unmarshal(baseContext.Value(utilities.KeyPayload{}).([]byte), &payload)
+	err := json.Unmarshal(baseContext.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		log.Warn().AnErr("Err", err).Msg(err.Error())
 		return
