@@ -273,10 +273,12 @@ func listen(conn *websocket.Conn) {
 		switch payload.Type {
 		case "BUILD":
 			actions.Build(ctx)
-		case "BUY_RESOURCE":
-			market.BuyResource(ctx)
 		case "BUY_AUCTION":
 			market.BuyAuction(ctx)
+		case "BUY_MERCENARY":
+			market.BuyMercenary(ctx)
+		case "BUY_RESOURCE":
+			market.BuyResource(ctx)
 		case "EXPLORE":
 			actions.Explore(ctx)
 		case "GATHER":
@@ -291,6 +293,8 @@ func listen(conn *websocket.Conn) {
 			rankings.RetrieveRankings(ctx)
 		case "GET_ROUNDS":
 			application.GetRounds(ctx)
+		case "GET_MERCENARY_MARKET":
+			market.GetMercenaryMarket(ctx)
 		case "GET_UNDERGROUND_MARKET":
 			market.GetUndergroundAuctions(ctx)
 		case "MARK_EVENT_SEEN":

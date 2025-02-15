@@ -95,14 +95,11 @@ func Explore(baseCtx context.Context) {
 			},
 			"spent": {
 				"energy":` + fmt.Sprint(energy) + `
-			},
-			"user":{
-				"energy":` + fmt.Sprint(user.RoundData.Energy) + `,
-				"landFree":` + fmt.Sprint(user.RoundData.FreeLand) + `,
-				"land":` + fmt.Sprint(user.RoundData.Land) + `
-			}
+			}			
 		}`,
 		)})
 		go user.Log("Spent: "+strconv.Itoa(energy)+" energy -- Found: "+strconv.FormatFloat(increase, 'f', 2, 64)+" acres", user.RoundData.ID)
 	}
+
+	user.Refresh()
 }
