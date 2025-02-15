@@ -68,7 +68,7 @@ func main() {
 
 		createRules(db)
 		createNews(db)
-		createUnits(db)
+		unit := createUnits(db)
 		createBuildings(db)
 		createResources(db)
 		item1, item2 := createItems(db)
@@ -81,6 +81,7 @@ func main() {
 		createEvents(db, round)
 		createRankings(db, finished, round)
 		createBlackMarket(db)
+		createMercenaryMarket(db, unit, round)
 
 		var user *models.User
 		db.First(&user)
@@ -528,6 +529,17 @@ func createBlackMarket(db *gorm.DB) {
 	})
 }
 
+func createMercenaryMarket(db *gorm.DB, unit *models.RoundUnit, round *models.Round) {
+	log.Info().Msg("createMercenaryMarket")
+
+	db.Create(&models.MercenaryMarket{
+		Cost:    5,
+		Unit:    unit.GUID,
+		Round:   round.ID,
+		Expires: time.Now().AddDate(0, 0, 2),
+	})
+}
+
 func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE user_units")
 	db.Exec("DROP TABLE user_rounds")
@@ -554,6 +566,7 @@ func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE rankings")
 	db.Exec("DROP TABLE underground_market_purchases")
 	db.Exec("DROP TABLE underground_market_auctions")
+	db.Exec("DROP TABLE mercenary_markets")
 }
 
 func createConversations(db *gorm.DB) {
@@ -817,7 +830,7 @@ func createResources(db *gorm.DB) {
 	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 7, StartWith: 200, CanGather: true, CanMarket: false})
 }
 
-func createUnits(db *gorm.DB) {
+func createUnits(db *gorm.DB) *models.RoundUnit {
 	//================================//
 	// Units													//
 	//================================//
@@ -902,7 +915,8 @@ func createUnits(db *gorm.DB) {
 		SupportsPartial: false,
 		StartWith:       0,
 	})
-	db.Create(&models.RoundUnit{
+
+	unit := models.RoundUnit{
 		RoundID:         0,
 		UnitID:          5,
 		Attack:          10.00,
@@ -918,7 +932,10 @@ func createUnits(db *gorm.DB) {
 		Recruitable:     true,
 		SupportsPartial: false,
 		StartWith:       0,
-	})
+	}
+	db.Create(&unit)
+
+	return &unit
 }
 
 func createItems(db *gorm.DB) (item1 *models.Item, item2 *models.Item) {

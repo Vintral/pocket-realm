@@ -96,7 +96,6 @@ func (round *Round) AfterFind(tx *gorm.DB) (err error) {
 	go round.loadResources(ctx, wg)
 	go round.loadUnits(ctx, wg)
 	go round.loadBuildings(ctx, wg)
-	// go user.loadItems(ctx, wg)
 	wg.Wait()
 
 	round.GetMarketInfo(ctx)

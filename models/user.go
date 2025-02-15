@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Vintral/pocket-realm/game/payloads"
 	realmRedis "github.com/Vintral/pocket-realm/redis"
 	realmUtils "github.com/Vintral/pocket-realm/utils"
 	"github.com/rs/zerolog/log"
@@ -443,15 +442,16 @@ func (user *User) Dump() {
 }
 
 func (user *User) sendUserData() {
-	userData, err := json.Marshal(user)
-	if err != nil {
-		user.SendMessage(payloads.Response{
-			Type: "USER_DATA",
-			Data: append([]byte("\"user\":"), userData...),
-		})
+	// userData, err := json.Marshal(user)
+	user.SendMessage(struct {
+		Type string `json:"type"`
+		User *User  `json:"user"`
+	}{
+		Type: "USER_DATA",
+		User: user,
+	})
 
-		log.Info().Msg("Sent User Data")
-	}
+	log.Info().Msg("Sent User Data")
 }
 
 type SendErrorParams struct {
@@ -536,23 +536,17 @@ func (user *User) SendError(params SendErrorParams) {
 }
 
 func (user *User) SendMessage(packet any) {
-	fmt.Println("-----------------------------")
-	fmt.Println("SendMessage:", packet)
+	log.Trace().Msg("SendMessage")
 
 	if user.Connection != nil {
-		//fmt.Println("Packet:", packet)
 		if payload, err := json.Marshal(packet); err == nil {
-			//fmt.Println("Payload:", payload)
 			user.Connection.WriteMessage(1, payload)
-			//fmt.Println("Sent:", packet)
 		} else {
-			fmt.Println(err)
-			fmt.Println("Error Sending:", packet)
+			log.Error().AnErr("err", err).Msg("Error in user.SendMessage")
 		}
 	} else {
-		fmt.Println("Connection is nil")
+		log.Warn().Msg("Connection is nil")
 	}
-	fmt.Println("-----------------------------")
 }
 
 func (user *User) Log(message string, round uint) {
@@ -975,6 +969,38 @@ func (user *User) TakeItem(baseContext context.Context, item *Item) bool {
 
 	temp.Quantity--
 	return user.updateItems(ctx, nil)
+}
+
+func (user *User) AddUnit(baseContext context.Context, unit *Unit, quantity int) bool {
+	_, span := Tracer.Start(baseContext, "add-unit")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Int("user", int(user.ID)),
+		attribute.Int("unit", int(unit.ID)),
+		attribute.Int("quantity", quantity),
+	)
+
+	found := false
+	var temp *UserUnit
+	for i := 0; i < len(user.Units) && !found; i++ {
+		if user.Units[i].UnitID == unit.ID {
+			temp = user.Units[i]
+		}
+	}
+
+	if temp == nil {
+		temp = &UserUnit{
+			UserID:   user.ID,
+			RoundID:  uint(user.RoundID),
+			UnitID:   unit.ID,
+			UnitGuid: user.Round.MapUnitsById[unit.ID].GUID,
+		}
+		user.Units = append(user.Units, temp)
+	}
+
+	temp.Quantity += float64(quantity)
+	return true
 }
 
 func (user *User) TakeResource(ctx context.Context, resource string, amount int) bool {
