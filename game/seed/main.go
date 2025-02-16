@@ -87,6 +87,8 @@ func main() {
 		db.First(&user)
 		log.Info().Any("user", user).Msg("Loaded User")
 		models.GetUndergroundMarketAuctions(context.Background(), user)
+
+		createBuffs(db, user)
 	}
 
 	log.Info().Msg("Done Seeding")
@@ -205,6 +207,28 @@ func createUserTables(db *gorm.DB, round *models.Round) {
 		RecruitPower:   1,
 	})
 
+	db.Create(&models.UserRound{
+		UserID:         1,
+		RoundID:        2,
+		CharacterClass: "warlord",
+		Energy:         int(round.EnergyMax),
+		Gold:           1,
+		TickGold:       1,
+		Housing:        1,
+		Population:     1,
+		Food:           1,
+		TickFood:       1,
+		Wood:           1,
+		Metal:          1,
+		Faith:          1,
+		Stone:          1,
+		Mana:           1,
+		Land:           1,
+		FreeLand:       1,
+		BuildPower:     1,
+		RecruitPower:   1,
+	})
+
 	// db.Create(&models.UserRound{
 	// 	UserID:         1,
 	// 	RoundID:        2,
@@ -254,6 +278,45 @@ func createUserTables(db *gorm.DB, round *models.Round) {
 	// 	RoundID:        1,
 	// 	CharacterClass: "druid",
 	// })
+}
+
+func createBuffs(db *gorm.DB, user *models.User) {
+	log.Info().Msg("Creating Buffs")
+
+	buff1 := &models.Buff{
+		Name:     "Gold Production Percent Buff",
+		Field:    "gold_tick",
+		Bonus:    50,
+		Type:     "player",
+		Percent:  true,
+		Duration: time.Duration(time.Hour * 6),
+	}
+	db.Create(buff1)
+
+	buff2 := &models.Buff{
+		Name:     "Gold Production Static Buff",
+		Field:    "gold_tick",
+		Bonus:    25,
+		Type:     "player",
+		Percent:  false,
+		Duration: time.Duration(time.Hour * 6),
+	}
+	db.Create(buff2)
+
+	buff3 := &models.Buff{
+		Name:    "Gold Production Permanent Buff",
+		Field:   "gold_tick",
+		Bonus:   5,
+		Type:    "player",
+		Percent: false,
+	}
+	db.Create(buff3)
+
+	ctx := context.Background()
+	user.AddBuff(ctx, buff1)
+	user.AddBuff(ctx, buff2)
+	user.AddBuff(ctx, buff3)
+	db.WithContext(ctx).Save(&user)
 }
 
 func createRounds(db *gorm.DB) (current *models.Round, finished *models.Round) {
@@ -567,6 +630,8 @@ func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE underground_market_purchases")
 	db.Exec("DROP TABLE underground_market_auctions")
 	db.Exec("DROP TABLE mercenary_markets")
+	db.Exec("DROP TABLE buffs")
+	db.Exec("DROP TABLE user_buffs")
 }
 
 func createConversations(db *gorm.DB) {
