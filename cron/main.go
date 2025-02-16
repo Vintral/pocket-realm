@@ -51,8 +51,7 @@ func getBankruptQuery(field string) string {
 }
 
 func dealWithBankruptUser(ctx context.Context, field string, roundid uint, userid int) {
-	var userModel *models.User
-	user := userModel.LoadForRound(userid, int(roundid))
+	user := models.LoadUserForRound(userid, int(roundid))
 
 	if ok := user.ProcessBankruptcy(ctx, field); !ok {
 		log.Warn().Uint("roundid", roundid).Uint("userid", user.ID).Str("field", field).Msg("Error processing Bankruptcy")
@@ -123,13 +122,6 @@ func growPopulations(baseContext context.Context, roundid uint) {
 	db.WithContext(ctx).Exec("UPDATE user_rounds SET population = population + 1, tick_gold = tick_gold + 1 WHERE population < housing AND round_id = ?", roundid)
 
 	log.Warn().Msg("User Count with population updates(" + fmt.Sprint(roundid) + "):" + fmt.Sprint(len(userIDs)))
-	// var userModel *models.User
-	// for _, u := range userIDs {
-	// 	go func(uid int) {
-	// 		user := userModel.LoadForRound(uid, int(roundid))
-	// 		user.UpdateRound(ctx, nil)
-	// 	}(u)
-	// }
 }
 
 func processRound(baseContext context.Context, roundid uint, waitgroup *sync.WaitGroup) {
@@ -143,8 +135,6 @@ func processRound(baseContext context.Context, roundid uint, waitgroup *sync.Wai
 	log.Info().Uint("roundid", roundid).Msg("processRound: " + fmt.Sprint(roundid))
 
 	fields := [...]string{"gold", "food", "wood", "metal", "stone", "mana", "faith"}
-	// fields := [...]string{"gold"}
-	// fields := [...]string{"food"}
 
 	growPopulations(ctx, roundid)
 
@@ -155,6 +145,19 @@ func processRound(baseContext context.Context, roundid uint, waitgroup *sync.Wai
 	}
 	//wg.Wait()
 
+	var userIDs []int
+	log.Info().Msg("Current date: " + fmt.Sprint(time.Now()))
+	db.WithContext(ctx).Model(&models.UserBuff{}).Distinct("user_id").Where("round_id = ? AND expires <= ?", roundid, time.Now()).Select("user_id").Scan(&userIDs)
+	log.Info().Int("users", len(userIDs)).Msg("Remove expired buffs")
+	for _, userID := range userIDs {
+		log.Info().Int("user", userID).Msg("Remove expired buffs for user")
+
+		user := models.LoadUserForRound(userID, int(roundid))
+		user.RemoveExpiredBuffs(ctx)
+		db.WithContext(ctx).Save(&user)
+	}
+
+	db.WithContext(ctx).Unscoped().Where("expires <= ? AND expires <> 0", time.Now()).Delete(&models.UserBuff{})
 	db.WithContext(ctx).Unscoped().Where("quantity = ?", 0).Delete(&models.UserUnit{})
 	db.WithContext(ctx).Unscoped().Where("quantity = ?", 0).Delete(&models.UserBuilding{})
 
@@ -230,14 +233,7 @@ func setupRedis(tp *trace.TracerProvider) {
 
 func main() {
 	setupLogs()
-	// log.Info().Msg("Info message")
 	log.Info().Msg("Running Cron")
-	// log.Error().Msg("Error message")
-	// log.Trace().Msg("Trace message")
-	// log.Debug().Msg("Debug message")
-	// log.Warn().Msg("Warn message")
-	// log.Fatal().Msg("Fatal message")
-	// return
 
 	err := godotenv.Load(".env")
 	if err != nil {
@@ -266,7 +262,6 @@ func main() {
 	tracer = tp.Tracer("realm-cron")
 	models.SetTracerProvider(tp)
 
-	//setupCrons()
 	setupRedis(tp)
 	setupDbase()
 
@@ -277,7 +272,7 @@ func main() {
 		panic("Error creating crons")
 	}
 
-	_, _ = scheduler.NewJob(
+	if _, err = scheduler.NewJob(
 		gocron.CronJob(
 			"* * * * *",
 			false,
@@ -285,21 +280,12 @@ func main() {
 		gocron.NewTask(
 			process,
 		),
-	)
-
-	log.Info().Msg("Starting up...")
-	scheduler.Start()
-
-	//models.Testing()
-	//process()
-
-	// var u *models.User
-	// testing := u.LoadForRound(1, 1)
-	// if testing == nil {
-	// 	fmt.Println("NO USER")
-	// }
-	// testing.Dump()
-	//fmt.Println(testing.ID)
+	); err != nil {
+		log.Error().AnErr("err", err).Msg("Error setting up crons")
+	} else {
+		log.Info().Msg("Starting up...")
+		scheduler.Start()
+	}
 
 	for {
 		time.Sleep(60 * time.Second)
