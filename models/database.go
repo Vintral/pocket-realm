@@ -106,6 +106,8 @@ func RunMigrations(db *gorm.DB) {
 		&Message{},
 		&Event{},
 		&Ranking{},
+		&Buff{},
+		&UserBuff{},
 	)
 	fmt.Println("Ran Migrations")
 }
