@@ -7,6 +7,7 @@ import (
 	"math"
 	"strings"
 	"sync"
+	"time"
 
 	realmRedis "github.com/Vintral/pocket-realm/redis"
 	realmUtils "github.com/Vintral/pocket-realm/utils"
@@ -43,6 +44,7 @@ type User struct {
 	Units        []*UserUnit     `gorm:"-" json:"units"`
 	Buildings    []*UserBuilding `gorm:"-" json:"buildings"`
 	Items        []*UserItem     `gorm:"-" json:"items"`
+	Buffs        []*UserBuff     `gorm:"-" json:"buffs"`
 	Context      context.Context `gorm:"-:all" json:"-"`
 	Connection   *websocket.Conn `gorm:"-" json:"-"`
 	DB           *gorm.DB        `gorm:"-" json:"-"`
@@ -89,7 +91,7 @@ func (user *User) AfterFind(tx *gorm.DB) (err error) {
 	if roundId != 0 {
 		round, err := LoadRoundById(ctx, roundId)
 		if err != nil {
-			fmt.Println("Error Loading Round:", user.RoundID)
+			log.Error().AnErr("err", err).Int("round", user.RoundID).Msg("Error Loading Round")
 			return err
 		}
 
@@ -97,15 +99,14 @@ func (user *User) AfterFind(tx *gorm.DB) (err error) {
 
 		//user.loadSynchronous(ctx)
 		wg := new(sync.WaitGroup)
-		wg.Add(4)
+		wg.Add(5)
 		go user.loadRound(ctx, wg)
 		go user.loadUnits(ctx, wg)
 		go user.loadBuildings(ctx, wg)
 		go user.loadItems(ctx, wg)
+		go user.loadBuffs(ctx, wg)
 		wg.Wait()
 	}
-
-	log.Warn().Msg(fmt.Sprintf("USER ROUND:::%d %s", user.RoundID, user.RoundPlaying))
 
 	return
 }
@@ -115,11 +116,12 @@ func (user *User) AfterUpdate(tx *gorm.DB) (err error) {
 	defer sp.End()
 
 	wg := new(sync.WaitGroup)
-	wg.Add(4)
+	wg.Add(5)
 	go user.UpdateRound(ctx, wg)
 	go user.updateUnits(ctx, wg)
 	go user.updateBuildings(ctx, wg)
 	go user.updateItems(ctx, wg)
+	go user.updateBuffs(ctx, wg)
 	wg.Wait()
 
 	return
@@ -141,6 +143,25 @@ func (user *User) updateUnits(ctx context.Context, wg *sync.WaitGroup) bool {
 	}
 
 	log.Trace().Msg("Updated units")
+	return true
+}
+
+func (user *User) updateBuffs(ctx context.Context, wg *sync.WaitGroup) bool {
+	ctx, span := Tracer.Start(ctx, "user-update-buffs")
+	defer span.End()
+	if wg != nil {
+		defer wg.Done()
+	}
+
+	if len(user.Buffs) != 0 {
+		if err := db.WithContext(ctx).Save(&user.Buffs).Error; err != nil {
+			log.Error().AnErr("error", err).Msg("Error Updating Buffs")
+			span.SetStatus(codes.Error, err.Error())
+			return false
+		}
+	}
+
+	log.Trace().Msg("Updated buggs")
 	return true
 }
 
@@ -187,24 +208,42 @@ func (user *User) updateTickField(field string, val float64) {
 }
 
 func (user *User) updateTicks(ctx context.Context) {
-	user.resetTicks()
+	// user.resetTicks()
 
 	//log.Warn().Msg("Population: " + fmt.Sprint(user.RoundData.Population))
-	user.RoundData.TickGold = user.RoundData.Population
+
+	CostFaith := 0.0
+	CostFood := 0.0
+	CostGold := 0.0
+	CostMana := 0.0
+	CostMetal := 0.0
+	CostStone := 0.0
+	CostWood := 0.0
+
+	BaseFaith := 0.0
+	BaseFood := 0.0
+	BaseGold := user.RoundData.Population
+	BaseMana := 0.0
+	BaseMetal := 0.0
+	BaseStone := 0.0
+	BaseWood := 0.0
+	BaseBuildPower := 0.0
+	BaseRecruitPower := 0.0
+	BaseDefense := 0.0
+	BaseHousing := 0.0
 
 	for _, unit := range user.Units {
-
 		baseUnit := user.Round.MapUnitsById[unit.UnitID]
 		quantity := math.Floor(unit.Quantity)
 
 		if quantity > 0 {
-			user.RoundData.TickFaith -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepFaith), 2)
-			user.RoundData.TickFood -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepFood), 2)
-			user.RoundData.TickGold -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepGold), 2)
-			user.RoundData.TickMana -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepMana), 2)
-			user.RoundData.TickMetal -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepMetal), 2)
-			user.RoundData.TickStone -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepStone), 2)
-			user.RoundData.TickWood -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepWood), 2)
+			CostFaith -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepFaith), 2)
+			CostFood -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepFood), 2)
+			CostGold -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepGold), 2)
+			CostMana -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepMana), 2)
+			CostMetal -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepMetal), 2)
+			CostStone -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepStone), 2)
+			CostWood -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepWood), 2)
 		}
 	}
 
@@ -214,17 +253,95 @@ func (user *User) updateTicks(ctx context.Context) {
 
 		if quantity > 0 {
 			val := realmUtils.RoundFloat(math.Floor(building.Quantity*float64(baseBuilding.BonusValue)), 2)
-			user.updateTickField(baseBuilding.BonusField, val)
+			switch baseBuilding.BonusField {
+			case "build_power":
+				BaseBuildPower += val
+			case "recruit_power":
+				BaseRecruitPower += val
+			case "defense":
+				BaseDefense += val
+			case "food_tick":
+				BaseFood += val
+			case "wood_tick":
+				BaseWood += val
+			case "stone_tick":
+				BaseStone += val
+			case "metal_tick":
+				BaseMetal += val
+			case "gold_tick":
+				BaseGold += val
+			case "mana_tick":
+				BaseMana += val
+			case "faith_tick":
+				BaseFaith += val
+			case "housing":
+				BaseHousing += val
+			}
 
-			user.RoundData.TickFaith -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepFaith), 2)
-			user.RoundData.TickFood -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepFood), 2)
-			user.RoundData.TickGold -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepGold), 2)
-			user.RoundData.TickMana -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepMana), 2)
-			user.RoundData.TickMetal -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepMetal), 2)
-			user.RoundData.TickStone -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepStone), 2)
-			user.RoundData.TickWood -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepWood), 2)
+			CostFaith -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepFaith), 2)
+			CostFood -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepFood), 2)
+			CostGold -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepGold), 2)
+			CostMana -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepMana), 2)
+			CostMetal -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepMetal), 2)
+			CostStone -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepStone), 2)
+			CostWood -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepWood), 2)
 		}
 	}
+
+	for _, userBuff := range user.Buffs {
+		if buff, err := LoadBuffById(ctx, int(userBuff.BuffID)); err == nil {
+			var field *float64
+
+			fmt.Println("field: " + buff.Field)
+
+			switch buff.Field {
+			case "build_power":
+				field = &BaseBuildPower
+			case "recruit_power":
+				field = &BaseRecruitPower
+			case "defense":
+				field = &BaseDefense
+			case "food_tick":
+				field = &BaseFood
+			case "wood_tick":
+				field = &BaseWood
+			case "stone_tick":
+				field = &BaseStone
+			case "metal_tick":
+				field = &BaseMetal
+			case "gold_tick":
+				field = &BaseGold
+			case "mana_tick":
+				field = &BaseMana
+			case "faith_tick":
+				field = &BaseFaith
+			case "housing":
+				field = &BaseHousing
+			default:
+				log.Warn().Msg("Unexpected buff field")
+			}
+
+			if buff.Percent {
+				*field *= (100 + buff.Bonus) / 100.0
+			} else {
+				*field += buff.Bonus
+			}
+		} else {
+			log.Error().AnErr("err", err).Msg("Buff not found")
+		}
+	}
+
+	user.RoundData.TickFood = BaseFood - CostFood
+
+	user.RoundData.TickGold = BaseGold - CostGold
+	user.RoundData.TickFaith = BaseFaith - CostFaith
+	user.RoundData.TickMana = BaseMana - CostMana
+	user.RoundData.TickMetal = BaseMetal - CostMetal
+	user.RoundData.TickStone = BaseStone - CostStone
+	user.RoundData.BuildPower = BaseBuildPower
+	user.RoundData.RecruitPower = BaseRecruitPower
+	user.RoundData.Housing = BaseHousing
+	user.RoundData.Defense = BaseDefense
 }
 
 func (user *User) UpdateRank(base context.Context) {
@@ -365,6 +482,16 @@ func (user *User) loadItems(ctx context.Context, wg *sync.WaitGroup) {
 	db.WithContext(ctx).Where("user_id = ?", user.ID).Find(&user.Items)
 }
 
+func (user *User) loadBuffs(ctx context.Context, wg *sync.WaitGroup) {
+	ctx, span := Tracer.Start(ctx, "user-load-buffs")
+	defer span.End()
+	defer wg.Done()
+
+	log.Warn().Msg("loadBuffs")
+
+	db.WithContext(ctx).Where("user_id = ? and round_id = ?", user.ID, getRound(user)).Find(&user.Buffs)
+}
+
 func (user *User) Load() *User {
 	log.Debug().Msg("Load")
 
@@ -379,66 +506,52 @@ func (user *User) Load() *User {
 	return user
 }
 
-func (user *User) LoadForRound(userid int, roundid int) *User {
-	log.Debug().
-		Int("userid", userid).
-		Int("roundid", roundid).
-		Msg("LoadForRound")
-
-	ctx, sp := Tracer.Start(context.Background(), "loading-user")
-	defer sp.End()
-
-	user = &User{RoundLoading: roundid}
-	user.ID = uint(userid)
-	if err := db.WithContext(ctx).First(&user).Error; err != nil {
-		return nil
-	}
-
-	return user
-}
-
 func (user *User) Dump() {
-	fmt.Println("============USER=============")
-	fmt.Println("GUID:", user.GUID)
-	fmt.Println("Email:", user.Email)
-	fmt.Println("Round:", user.RoundID)
-	fmt.Println("RoundLoading:", user.RoundLoading)
-	fmt.Println("Password:", user.Password)
-	fmt.Print("Admin:")
+	log.Trace().Msg("============USER=============")
+	log.Trace().Msg("GUID:" + fmt.Sprint(user.GUID))
+	log.Trace().Msg("Email:" + fmt.Sprint(user.Email))
+	log.Trace().Msg("Round:" + fmt.Sprint(user.RoundID))
+	log.Trace().Msg("RoundLoading:" + fmt.Sprint(user.RoundLoading))
+	log.Trace().Msg("Password:" + fmt.Sprint(user.Password))
 	if user.Admin {
-		fmt.Println("Yes")
+		log.Trace().Msg("Admin: Yes")
 	} else {
-		fmt.Println("No")
+		log.Trace().Msg("Admin: No")
 	}
 
-	fmt.Println("============ROUND============")
-	fmt.Println("Energy:", user.RoundData.Energy)
-	fmt.Println("RecruitPower:", user.RoundData.RecruitPower)
-	fmt.Println("BuildPower:", user.RoundData.BuildPower)
-	log.Warn().Float64("have", user.RoundData.Gold).Float64("tick", user.RoundData.TickGold).Msg("gold")
-	log.Warn().Float64("have", user.RoundData.Food).Float64("tick", user.RoundData.TickFood).Msg("food")
-	log.Warn().Float64("have", user.RoundData.Wood).Float64("tick", user.RoundData.TickWood).Msg("wood")
-	log.Warn().Float64("have", user.RoundData.Metal).Float64("tick", user.RoundData.TickMetal).Msg("metal")
-	log.Warn().Float64("have", user.RoundData.Faith).Float64("tick", user.RoundData.TickFaith).Msg("faith")
-	log.Warn().Float64("have", user.RoundData.Stone).Float64("tick", user.RoundData.TickStone).Msg("stone")
-	log.Warn().Float64("have", user.RoundData.Mana).Float64("tick", user.RoundData.TickMana).Msg("mana")
+	log.Trace().Msg("============ROUND============")
+	log.Trace().Msg("Energy:" + fmt.Sprint(user.RoundData.Energy))
+	log.Trace().Msg("RecruitPower:" + fmt.Sprint(user.RoundData.RecruitPower))
+	log.Trace().Msg("BuildPower:" + fmt.Sprint(user.RoundData.BuildPower))
+	log.Trace().Float64("have", user.RoundData.Gold).Float64("tick", user.RoundData.TickGold).Msg("gold")
+	log.Trace().Float64("have", user.RoundData.Food).Float64("tick", user.RoundData.TickFood).Msg("food")
+	log.Trace().Float64("have", user.RoundData.Wood).Float64("tick", user.RoundData.TickWood).Msg("wood")
+	log.Trace().Float64("have", user.RoundData.Metal).Float64("tick", user.RoundData.TickMetal).Msg("metal")
+	log.Trace().Float64("have", user.RoundData.Faith).Float64("tick", user.RoundData.TickFaith).Msg("faith")
+	log.Trace().Float64("have", user.RoundData.Stone).Float64("tick", user.RoundData.TickStone).Msg("stone")
+	log.Trace().Float64("have", user.RoundData.Mana).Float64("tick", user.RoundData.TickMana).Msg("mana")
 
-	fmt.Println("============UNITS============")
+	log.Trace().Msg("============UNITS============")
 	for i := 0; i < len(user.Units); i++ {
-		fmt.Println("ID", user.Units[i].UnitID, ":", user.Units[i].Quantity)
+		log.Trace().Float64("quantity", user.Units[i].Quantity).Msg("ID: " + fmt.Sprint(user.Units[i].UnitID))
 	}
 
-	fmt.Println("==========BUILDINGS==========")
+	log.Trace().Msg("==========BUILDINGS==========")
 	for i := 0; i < len(user.Buildings); i++ {
-		fmt.Println("ID", user.Buildings[i].BuildingID, ":", user.Buildings[i].Quantity)
+		log.Trace().Float64("quantity", user.Buildings[i].Quantity).Msg("ID: " + fmt.Sprint(user.Buildings[i].BuildingID))
 	}
 
-	fmt.Println("============ITEMS============")
+	log.Trace().Msg("============ITEMS============")
 	for i := 0; i < len(user.Items); i++ {
-		fmt.Println("ID", user.Items[i].ID)
+		log.Trace().Msg("ID: " + fmt.Sprint(user.Items[i].ID))
 	}
 
-	fmt.Println("=============================")
+	log.Trace().Msg("============BUFFS============")
+	for i := 0; i < len(user.Buffs); i++ {
+		log.Trace().Msg("ID: " + fmt.Sprint(user.Buffs[i].ID))
+	}
+
+	log.Trace().Msg("=============================")
 }
 
 func (user *User) sendUserData() {
@@ -527,11 +640,10 @@ func (user *User) SendError(params SendErrorParams) {
 		if err == nil {
 			user.Connection.WriteMessage(1, payload)
 		} else {
-			fmt.Println(err)
-			fmt.Println("Error Sending Error:", params.Message)
+			log.Error().AnErr("err", err).Msg("Error Sending Error: " + params.Message)
 		}
 	} else {
-		fmt.Println("Connection is nil")
+		log.Error().Msg("Connection is nil")
 	}
 }
 
@@ -674,7 +786,7 @@ func (user *User) ProcessBankruptcy(ctx context.Context, field string) bool {
 
 			count := int(math.Ceil(-float64(deficit) / float64(unit.GetUpkeep(field))))
 			log.Warn().Msg("Deficit: " + fmt.Sprint(deficit))
-			fmt.Println(-float64(deficit) / float64(unit.GetUpkeep(field)))
+			log.Warn().Msg(fmt.Sprint(-float64(deficit) / float64(unit.GetUpkeep(field))))
 			log.Warn().Msg("Unit Upkeep: " + fmt.Sprint(unit.GetUpkeep(field)))
 
 			if count == 0 {
@@ -706,7 +818,7 @@ func (user *User) ProcessBankruptcy(ctx context.Context, field string) bool {
 
 			count := int(math.Ceil(-float64(deficit) / float64(building.GetUpkeep(field))))
 			log.Warn().Msg("Deficit: " + fmt.Sprint(deficit))
-			fmt.Println(-float64(deficit) / float64(building.GetUpkeep(field)))
+			log.Warn().Msg(fmt.Sprint(-float64(deficit) / float64(building.GetUpkeep(field))))
 			log.Warn().Msg("Unit Upkeep: " + fmt.Sprint(building.GetUpkeep(field)))
 
 			if count == 0 {
@@ -825,7 +937,7 @@ func (user *User) Join(ctx context.Context, round *Round) *User {
 		// FreeLand: float64(round.StartLand),
 	}
 	db.WithContext(ctx).Create(&data)
-	temp := user.LoadForRound(int(user.ID), int(round.ID))
+	temp := LoadUserForRound(int(user.ID), int(round.ID))
 	temp.RoundData = *data
 	temp.RoundData.Energy = int(round.EnergyMax)
 	temp.RoundData.Land = float64(round.StartLand)
@@ -928,14 +1040,13 @@ func (user *User) AddItem(baseContext context.Context, item *Item) bool {
 	var temp *UserItem
 	found := false
 	for i := 0; i < len(user.Items) && !found; i++ {
-		fmt.Println("Item", i)
 		if user.Items[i].ItemID == item.ID {
 			temp = user.Items[i]
 			found = true
 		}
 	}
 	if temp == nil {
-		fmt.Println("Create New UserItem")
+		log.Debug().Msg("Create New UserItem")
 		temp = &UserItem{
 			UserID:   user.ID,
 			ItemID:   item.ID,
@@ -1000,6 +1111,83 @@ func (user *User) AddUnit(baseContext context.Context, unit *Unit, quantity int)
 	}
 
 	temp.Quantity += float64(quantity)
+	return true
+}
+
+func (user *User) AddBuff(baseContext context.Context, buff *Buff) bool {
+	ctx, span := Tracer.Start(baseContext, "add-buff")
+	defer span.End()
+
+	log.Warn().Int("user", int(user.ID)).Int("buff", int(buff.ID)).Msg("AddBuff")
+
+	span.SetAttributes(
+		attribute.Int("user", int(user.ID)),
+		attribute.Int("buff", int(buff.ID)),
+	)
+
+	found := false
+	var temp *UserBuff
+	for i := 0; i < len(user.Buffs) && !found; i++ {
+		if user.Buffs[i].BuffID == buff.ID {
+			temp = user.Buffs[i]
+		}
+	}
+
+	if temp == nil {
+		log.Warn().Msg("Creating new UserBuff: " + fmt.Sprint(getRound(user)))
+		temp = &UserBuff{
+			UserID:  user.ID,
+			RoundID: uint(getRound(user)),
+			BuffID:  buff.ID,
+		}
+
+		if buff.Duration != 0 {
+			temp.Expires = time.Now()
+		} else {
+			log.Warn().Msg("Duration is 0")
+			if round, err := LoadRoundById(ctx, getRound(user)); err == nil {
+				fmt.Println(round)
+				temp.Expires = round.Ends
+
+				log.Warn().Msg("Set expires: " + fmt.Sprint(temp.Expires))
+			} else {
+				log.Error().AnErr("err", err).Msg("Error loading round")
+			}
+		}
+
+		user.Buffs = append(user.Buffs, temp)
+	}
+
+	if buff.Duration != 0 {
+		temp.Expires = temp.Expires.Add(-buff.Duration)
+	}
+	return true
+}
+
+func (user *User) RemoveExpiredBuffs(baseContext context.Context) bool {
+	ctx, span := Tracer.Start(baseContext, "remove-expired-buffs")
+	defer span.End()
+
+	var buffIDs []int
+	log.Info().Msg("Get Buff IDs for round: " + fmt.Sprint(user.RoundLoading))
+	db.WithContext(ctx).Model(&UserBuff{}).Where("round_id = ? AND ( expires <= ? AND expires <> 0 ) AND user_id = ?", user.RoundLoading, time.Now(), user.ID).Select("buff_id").Scan(&buffIDs)
+
+	for _, buff := range buffIDs {
+		log.Warn().Msg("Remove Buff: " + fmt.Sprint(buff))
+
+		found := false
+		for i := 0; i < len(user.Buffs) && !found; i++ {
+			if user.Buffs[i].BuffID == uint(buff) {
+				found = true
+				user.Buffs = append(user.Buffs[:i], user.Buffs[i+1:]...)
+			}
+		}
+
+		if !found {
+			log.Warn().Int("buff", buff).Uint("user", user.ID).Msg("Buff not found on user")
+		}
+	}
+
 	return true
 }
 
@@ -1086,4 +1274,22 @@ func GetUserIdForName(ctx context.Context, name string) uint {
 	}
 
 	return user.ID
+}
+
+func LoadUserForRound(userid int, roundid int) *User {
+	log.Debug().
+		Int("userid", userid).
+		Int("roundid", roundid).
+		Msg("LoadForRound")
+
+	ctx, sp := Tracer.Start(context.Background(), "loading-user")
+	defer sp.End()
+
+	user := &User{RoundLoading: roundid}
+	user.ID = uint(userid)
+	if err := db.WithContext(ctx).First(&user).Error; err != nil {
+		return nil
+	}
+
+	return user
 }
