@@ -134,7 +134,7 @@ func processRound(baseContext context.Context, roundid uint, waitgroup *sync.Wai
 
 	log.Info().Uint("roundid", roundid).Msg("processRound: " + fmt.Sprint(roundid))
 
-	fields := [...]string{"gold", "food", "wood", "metal", "stone", "mana", "faith"}
+	fields := [...]string{"gold", "food", "wood", "metal", "stone", "mana", "faith", "research"}
 
 	growPopulations(ctx, roundid)
 
