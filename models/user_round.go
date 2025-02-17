@@ -28,4 +28,6 @@ type UserRound struct {
 	TickStone      float64 `json:"tick_stone"`
 	Mana           float64 `json:"mana"`
 	TickMana       float64 `json:"tick_mana"`
+	Research       float64 `json:"research"`
+	TickResearch   float64 `json:"tick_research"`
 }
