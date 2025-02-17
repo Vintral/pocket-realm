@@ -882,6 +882,7 @@ func createResources(db *gorm.DB) {
 	db.Create(&models.Resource{Name: "metal"})
 	db.Create(&models.Resource{Name: "faith"})
 	db.Create(&models.Resource{Name: "mana"})
+	db.Create(&models.Resource{Name: "research"})
 
 	//================================//
 	// Resource Defaults							//
@@ -893,6 +894,7 @@ func createResources(db *gorm.DB) {
 	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 5, StartWith: 200, CanGather: true, CanMarket: true})
 	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 6, StartWith: 200, CanGather: true, CanMarket: false})
 	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 7, StartWith: 200, CanGather: true, CanMarket: false})
+	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 8, StartWith: 0, CanGather: false, CanMarket: false})
 }
 
 func createUnits(db *gorm.DB) *models.RoundUnit {
