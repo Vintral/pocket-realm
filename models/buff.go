@@ -13,18 +13,15 @@ var buffsById = make(map[int]*Buff)
 type Buff struct {
 	BaseModel
 
-	ID       uint          `gorm:"primaryKey" json:"order"`
-	Name     string        `json:"name"`
-	Type     string        `json:"type"`
-	Field    string        `json:"field"`
-	Item     uint          `jons:"item"`
-	Bonus    float64       `json:"bonus"`
-	Percent  bool          `json:"percent"`
-	Duration time.Duration `json:"duration"`
-}
-
-func (buff *Buff) applyTo(user *User) {
-	log.Trace().Uint("buff", buff.ID).Uint("user", user.ID).Msg("applyTo")
+	ID        uint          `gorm:"primaryKey" json:"order"`
+	Name      string        `json:"name"`
+	Type      string        `json:"type"`
+	Field     string        `json:"field"`
+	Item      uint          `jons:"item"`
+	Bonus     float64       `json:"bonus"`
+	Percent   bool          `json:"percent"`
+	Duration  time.Duration `json:"duration"`
+	MaxStacks uint          `json:"max_stacks"`
 }
 
 func (buff *Buff) Dump() {
@@ -37,6 +34,7 @@ func (buff *Buff) Dump() {
 	log.Trace().Msg("Bonus: " + fmt.Sprint(buff.Bonus))
 	log.Trace().Msg("Percent: " + fmt.Sprint(buff.Percent))
 	log.Trace().Msg("Duration: " + fmt.Sprint(buff.Duration))
+	log.Trace().Msg("Max Stacks: " + fmt.Sprint(buff.MaxStacks))
 	log.Trace().Msg("=============================")
 }
 

@@ -10,5 +10,6 @@ type UserBuff struct {
 	UserID  uint      `json:"-"`
 	RoundID uint      `json:"-"`
 	BuffID  uint      `json:"-"`
+	Stacks  uint      `json:"-"`
 	Expires time.Time `json:"-"`
 }
