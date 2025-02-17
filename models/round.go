@@ -59,6 +59,7 @@ type Round struct {
 	MetalCost        float32                         `gorm:"default:2" json:"metal_cost"`
 	Market           []*RoundMarketResource          `gorm:"-" json:"-"`
 	MarketResources  map[string]*RoundMarketResource `gorm:"-" json:"-"`
+	Technologies     []*Technology                   `gorm:"-" json:"technology"`
 }
 
 func (round *Round) BeforeCreate(tx *gorm.DB) (err error) {
@@ -92,10 +93,11 @@ func (round *Round) AfterFind(tx *gorm.DB) (err error) {
 	defer sp.End()
 
 	wg := new(sync.WaitGroup)
-	wg.Add(3)
+	wg.Add(4)
 	go round.loadResources(ctx, wg)
 	go round.loadUnits(ctx, wg)
 	go round.loadBuildings(ctx, wg)
+	go round.loadTechnologies(ctx, wg)
 	wg.Wait()
 
 	round.GetMarketInfo(ctx)
@@ -115,6 +117,34 @@ func (round *Round) createMarketResource(ctx context.Context, resource *Resource
 		Bought:     0,
 		Value:      2,
 	})
+}
+
+func (round *Round) loadTechnologies(baseContext context.Context, wg *sync.WaitGroup) {
+	ctx, span := Tracer.Start(baseContext, "load-technologies")
+	defer span.End()
+	defer wg.Done()
+
+	log.Warn().Msg("loadTechnologies")
+
+	db.WithContext(ctx).Raw(`
+		SELECT
+			technologies.id, technologies.name, technologies.buff, round_technologies.available
+		FROM
+			round_technologies
+		INNER JOIN
+			(
+				SELECT technology_id, MAX(round_id) AS round_id
+				FROM round_technologies
+				WHERE round_id = 0 OR round_id = ` + fmt.Sprint(round.ID) + `
+				GROUP BY technology_id
+				ORDER BY technology_id DESC
+			) AS A
+		ON
+			A.round_id = round_technologies.round_id
+		INNER JOIN technologies
+		ON technologies.id = A.technology_id
+		WHERE round_technologies.technology_id = A.technology_id AND round_technologies.available = 1
+	`).Find(&round.Technologies)
 }
 
 func (round *Round) loadBuildings(ctx context.Context, wg *sync.WaitGroup) {
