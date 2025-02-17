@@ -84,6 +84,8 @@ func RunMigrations(db *gorm.DB) {
 		&Unit{},
 		&Round{},
 		&Building{},
+		&Buff{},
+		&Technology{},
 		&Effect{},
 		&Item{},
 		&Resource{},
@@ -97,6 +99,8 @@ func RunMigrations(db *gorm.DB) {
 		&UserLog{},
 		&RoundResource{},
 		&RoundMarketResource{},
+		&RoundTechnology{},
+		&TechnologyLevel{},
 		&MercenaryMarket{},
 		&UndergroundMarketPurchase{},
 		&UndergroundMarketAuction{},
@@ -106,7 +110,6 @@ func RunMigrations(db *gorm.DB) {
 		&Message{},
 		&Event{},
 		&Ranking{},
-		&Buff{},
 		&UserBuff{},
 	)
 	fmt.Println("Ran Migrations")
