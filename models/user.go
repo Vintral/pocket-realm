@@ -322,9 +322,9 @@ func (user *User) updateTicks(ctx context.Context) {
 			}
 
 			if buff.Percent {
-				*field *= (100 + buff.Bonus) / 100.0
+				*field *= (100 + (buff.Bonus * float64(userBuff.Stacks))) / 100.0
 			} else {
-				*field += buff.Bonus
+				*field += buff.Bonus * float64(userBuff.Stacks)
 			}
 		} else {
 			log.Error().AnErr("err", err).Msg("Buff not found")
@@ -1130,6 +1130,10 @@ func (user *User) AddBuff(baseContext context.Context, buff *Buff) bool {
 	for i := 0; i < len(user.Buffs) && !found; i++ {
 		if user.Buffs[i].BuffID == buff.ID {
 			temp = user.Buffs[i]
+			temp.Stacks = temp.Stacks + 1
+			if temp.Stacks > buff.MaxStacks {
+				temp.Stacks = buff.MaxStacks
+			}
 		}
 	}
 
@@ -1139,6 +1143,7 @@ func (user *User) AddBuff(baseContext context.Context, buff *Buff) bool {
 			UserID:  user.ID,
 			RoundID: uint(getRound(user)),
 			BuffID:  buff.ID,
+			Stacks:  1,
 		}
 
 		if buff.Duration != 0 {
@@ -1159,8 +1164,9 @@ func (user *User) AddBuff(baseContext context.Context, buff *Buff) bool {
 	}
 
 	if buff.Duration != 0 {
-		temp.Expires = temp.Expires.Add(-buff.Duration)
+		temp.Expires = time.Now().Add(buff.Duration)
 	}
+
 	return true
 }
 
