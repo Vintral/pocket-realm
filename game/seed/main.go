@@ -14,6 +14,8 @@ import (
 	"github.com/google/uuid"
 	redisDef "github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"
@@ -66,29 +68,32 @@ func main() {
 		dropTables(db)
 		runMigrations(db)
 
-		createRules(db)
-		createNews(db)
-		unit := createUnits(db)
-		createBuildings(db)
-		createResources(db)
-		item1, item2 := createItems(db)
 		round, finished := createRounds(db)
-		createOverrides(db)
+		item1, item2 := createItems(db)
 		createUsers(db, round, item1, item2)
 		createUserTables(db, round)
-		createShouts(db)
-		createConversations(db)
-		createEvents(db, round)
-		createRankings(db, finished, round)
-		createBlackMarket(db)
-		createMercenaryMarket(db, unit, round)
 
 		var user *models.User
 		db.First(&user)
 		log.Info().Any("user", user).Msg("Loaded User")
 		models.GetUndergroundMarketAuctions(context.Background(), user)
 
+		createRules(db)
+		createNews(db)
+		unit := createUnits(db)
+		createBuildings(db)
+		createResources(db)
 		createBuffs(db, user)
+		createTechnologies(db, user)
+
+		createOverrides(db)
+
+		createShouts(db)
+		createConversations(db)
+		createEvents(db, round)
+		createRankings(db, finished, round)
+		createBlackMarket(db)
+		createMercenaryMarket(db, unit, round)
 	}
 
 	log.Info().Msg("Done Seeding")
@@ -280,42 +285,70 @@ func createUserTables(db *gorm.DB, round *models.Round) {
 	// })
 }
 
+func createTechnologies(db *gorm.DB, user *models.User) {
+	log.Info().Msg("Creating Technologies")
+
+	costs := [...]uint{250, 500, 1000, 2500}
+	fields := [...]string{"gold", "food", "research", "metal", "wood", "faith", "stone"}
+	for i, field := range fields {
+		technology := &models.Technology{
+			Name: fmt.Sprintf("Improved %s", cases.Title(language.English).String(field)),
+			Buff: uint(i + 1),
+		}
+		db.Create(technology)
+
+		db.Create(&models.RoundTechnology{
+			RoundID:      0,
+			TechnologyID: technology.ID,
+			Available:    true,
+		})
+
+		for n, cost := range costs {
+			db.Create(&models.TechnologyLevel{
+				Technology: technology.ID,
+				Level:      uint(n + 1),
+				Cost:       cost,
+			})
+		}
+	}
+
+	db.Create(&models.RoundTechnology{
+		RoundID:      1,
+		TechnologyID: 7,
+		Available:    false,
+	})
+}
+
 func createBuffs(db *gorm.DB, user *models.User) {
 	log.Info().Msg("Creating Buffs")
 
-	buff1 := &models.Buff{
-		Name:     "Gold Production Percent Buff",
-		Field:    "gold_tick",
-		Bonus:    50,
-		Type:     "player",
-		Percent:  true,
-		Duration: time.Duration(time.Hour * 6),
-	}
-	db.Create(buff1)
+	fields := [...]string{"gold", "food", "research", "metal", "wood", "faith", "stone"}
+	maxStacks := 4
 
-	buff2 := &models.Buff{
-		Name:     "Gold Production Static Buff",
-		Field:    "gold_tick",
-		Bonus:    25,
-		Type:     "player",
-		Percent:  false,
-		Duration: time.Duration(time.Hour * 6),
-	}
-	db.Create(buff2)
+	var goldBuff *models.Buff
+	for i, field := range fields {
+		buff :=
+			&models.Buff{
+				Name:      fmt.Sprintf("%s Production Percent Buff", cases.Title(language.English).String(field)),
+				Field:     fmt.Sprintf("%s_tick", field),
+				Bonus:     float64(100 / maxStacks),
+				Type:      "player",
+				MaxStacks: uint(maxStacks),
+				Percent:   true,
+			}
+		db.Create(buff)
 
-	buff3 := &models.Buff{
-		Name:    "Gold Production Permanent Buff",
-		Field:   "gold_tick",
-		Bonus:   5,
-		Type:    "player",
-		Percent: false,
+		if i == 0 {
+			goldBuff = buff
+		}
 	}
-	db.Create(buff3)
 
 	ctx := context.Background()
-	user.AddBuff(ctx, buff1)
-	user.AddBuff(ctx, buff2)
-	user.AddBuff(ctx, buff3)
+	user.AddBuff(ctx, goldBuff)
+	user.AddBuff(ctx, goldBuff)
+	user.AddBuff(ctx, goldBuff)
+	user.AddBuff(ctx, goldBuff)
+	user.AddBuff(ctx, goldBuff)
 	db.WithContext(ctx).Save(&user)
 }
 
@@ -632,6 +665,9 @@ func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE mercenary_markets")
 	db.Exec("DROP TABLE buffs")
 	db.Exec("DROP TABLE user_buffs")
+	db.Exec("DROP TABLE technologies")
+	db.Exec("DROP TABLE technology_levels")
+	db.Exec("DROP TABLE round_technologies")
 }
 
 func createConversations(db *gorm.DB) {
