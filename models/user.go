@@ -1318,6 +1318,129 @@ func (user *User) PurchaseTechnology(baseContext context.Context, technology *Te
 	return false
 }
 
+func (user *User) BuyResource(baseContext context.Context, quantity uint, resourceGuid uuid.UUID) bool {
+	ctx, span := Tracer.Start(baseContext, "user.BuyResource")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Int("user", int(user.ID)),
+		attribute.Int("round", user.RoundID),
+		attribute.Int("quantity", int(quantity)),
+		attribute.String("resource", resourceGuid.String()),
+	)
+
+	if round, err := LoadRoundById(ctx, user.RoundID); err == nil {
+		resource := round.MarketResources[resourceGuid]
+		cost := float64(resource.Value) * float64(quantity)
+		name := round.GetResourceById(resource.ResourceID).Name
+		if user.RoundData.Gold >= cost {
+			user.RoundData.Gold -= cost
+
+			switch name {
+			case "food":
+				user.RoundData.Food += float64(quantity)
+			case "wood":
+				user.RoundData.Wood += float64(quantity)
+			case "stone":
+				user.RoundData.Stone += float64(quantity)
+			case "metal":
+				user.RoundData.Metal += float64(quantity)
+			}
+
+			if err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+				tx.WithContext(ctx).Exec("UPDATE round_market_resources SET bought = bought + ? WHERE round_id = ? AND resource_id = ?", quantity, round.ID, resource.ResourceID)
+
+				if err := tx.Save(&user).Error; err != nil {
+					return err
+				}
+
+				return nil
+			}); err == nil {
+				go user.Log(fmt.Sprintf("Bought %d %s for %f gold", quantity, name, cost), uint(user.RoundID))
+				log.Info().Str("resource", resourceGuid.String()).Int("quantity", int(quantity)).Int("user", int(user.ID)).Msg("Bought resource")
+				return true
+			}
+		}
+
+		go user.Log(fmt.Sprintf("Failed to buy %d %s for %f gold", quantity, name, cost), uint(user.RoundID))
+		log.Warn().Str("resource", resourceGuid.String()).Int("quantity", int(quantity)).Int("user", int(user.ID)).Msg("Failed to buy resource")
+		return false
+	} else {
+		log.Warn().AnErr("err", err).Msg("Error loading round")
+	}
+
+	log.Warn().Msg("Failed to load round")
+	return false
+}
+
+func (user *User) SellResource(baseContext context.Context, quantity uint, resourceGuid uuid.UUID) bool {
+	ctx, span := Tracer.Start(baseContext, "user.SellResource")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Int("user", int(user.ID)),
+		attribute.Int("round", user.RoundID),
+		attribute.Int("quantity", int(quantity)),
+		attribute.String("resource", resourceGuid.String()),
+	)
+
+	if round, err := LoadRoundById(ctx, user.RoundID); err == nil {
+		resource := round.MarketResources[resourceGuid]
+
+		cost := float64(1/resource.Value) * float64(quantity)
+		user.RoundData.Gold += cost
+		name := round.GetResourceById(resource.ResourceID).Name
+
+		switch name {
+		case "food":
+			if user.RoundData.Food < float64(quantity) {
+				go user.Log(fmt.Sprintf("Don't have enough %s to sell %d - only have %f", name, quantity, user.RoundData.Food), uint(user.RoundID))
+				return false
+			}
+			user.RoundData.Food -= float64(quantity)
+		case "wood":
+			if user.RoundData.Wood < float64(quantity) {
+				go user.Log(fmt.Sprintf("Don't have enough %s to sell %d - only have %f", name, quantity, user.RoundData.Wood), uint(user.RoundID))
+				return false
+			}
+			user.RoundData.Wood -= float64(quantity)
+		case "stone":
+			if user.RoundData.Stone < float64(quantity) {
+				go user.Log(fmt.Sprintf("Don't have enough %s to sell %d - only have %f", name, quantity, user.RoundData.Stone), uint(user.RoundID))
+				return false
+			}
+			user.RoundData.Stone -= float64(quantity)
+		case "metal":
+			if user.RoundData.Metal < float64(quantity) {
+				go user.Log(fmt.Sprintf("Don't have enough %s to sell %d - only have %f", name, quantity, user.RoundData.Metal), uint(user.RoundID))
+				return false
+			}
+			user.RoundData.Metal -= float64(quantity)
+		}
+
+		if err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			tx.WithContext(ctx).Exec("UPDATE round_market_resources SET sold = sold + ? WHERE round_id = ? AND resource_id = ?", quantity, round.ID, resource.ResourceID)
+
+			if err := tx.Save(&user).Error; err != nil {
+				return err
+			}
+
+			return nil
+		}); err == nil {
+			go user.Log(fmt.Sprintf("Sold %d %s for %f gold", quantity, name, cost), uint(user.RoundID))
+			log.Info().Str("resource", resourceGuid.String()).Int("quantity", int(quantity)).Int("user", int(user.ID)).Msg("Sold resource")
+			return true
+		}
+
+		go user.Log(fmt.Sprintf("Failed to sell %d %s for %f gold", quantity, name, cost), uint(user.RoundID))
+		log.Warn().Str("resource", resourceGuid.String()).Int("quantity", int(quantity)).Int("user", int(user.ID)).Msg("Failed to sell resource")
+		return false
+	}
+
+	log.Warn().Msg("Failed to load round")
+	return false
+}
+
 func GetUserIdForName(ctx context.Context, name string) uint {
 	var user *User
 	if err := db.WithContext(ctx).Where("username = ?", name).First(&user).Error; err != nil {
