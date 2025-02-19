@@ -14,6 +14,7 @@ import (
 
 	"github.com/Vintral/pocket-realm/game/actions"
 	"github.com/Vintral/pocket-realm/game/application"
+	"github.com/Vintral/pocket-realm/game/library"
 	"github.com/Vintral/pocket-realm/game/market"
 	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/game/player"
@@ -297,6 +298,10 @@ func listen(conn *websocket.Conn) {
 			market.GetMercenaryMarket(ctx)
 		case "GET_UNDERGROUND_MARKET":
 			market.GetUndergroundAuctions(ctx)
+		case "GET_TECHNOLOGIES":
+			library.GetTechnologies(ctx)
+		case "PURCHASE_TECHNOLOGY":
+			library.PurchaseTechnology(ctx)
 		case "MARK_EVENT_SEEN":
 			player.HandleMarkEventSeen(ctx)
 		case "MARKET_INFO":
