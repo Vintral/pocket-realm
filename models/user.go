@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -1270,6 +1271,51 @@ func (user *User) GiveResource(ctx context.Context, resource string, amount int)
 
 	log.Info().Msg("Resource Given")
 	return user.UpdateRound(ctx, nil)
+}
+
+func (user *User) PurchaseTechnology(baseContext context.Context, technology *Technology) bool {
+	if technology.Cost == 0 {
+		return false
+	}
+
+	ctx, span := Tracer.Start(baseContext, "user.PurchaseTechnology")
+	defer span.End()
+
+	log.Warn().Int("technology", int(technology.ID)).Msg("user.PurchaseTechnology")
+
+	var tech UserTechnology
+	db.WithContext(ctx).Where("user_id = ? AND round_id = ? AND technology_id = ?", user.ID, user.RoundID, technology.ID).Find(&tech)
+
+	if err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if tech.UserID == 0 {
+			tech = UserTechnology{UserID: user.ID, RoundID: uint(user.RoundID), TechnologyID: technology.ID}
+			if err := tx.WithContext(ctx).Create(&tech).Error; err != nil {
+				return err
+			}
+		}
+
+		if user.RoundData.Research > float64(technology.Cost) {
+			user.RoundData.Research -= float64(technology.Cost)
+
+			if err := tx.WithContext(ctx).Save(&user).Error; err != nil {
+				return err
+			}
+
+			tech.Level++
+			if err := tx.WithContext(ctx).Save(&tech).Error; err != nil {
+				return err
+			}
+		} else {
+			log.Warn().Int("current_research", int(user.RoundData.Research)).Int("user", int(user.ID)).Int("technology", int(technology.ID)).Msg("Cannot afford research")
+			return errors.New("cannot afford")
+		}
+
+		return nil
+	}); err == nil {
+		return true
+	}
+
+	return false
 }
 
 func GetUserIdForName(ctx context.Context, name string) uint {
