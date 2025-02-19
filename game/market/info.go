@@ -23,7 +23,7 @@ func GetInfo(baseContext context.Context) {
 	ctx, span := utils.StartSpan(baseContext, "market-info")
 	defer span.End()
 
-	log.Info().Msg("GetMarketInto: " + fmt.Sprint(user.ID))
+	log.Info().Msg("GetMarketInfo: " + fmt.Sprint(user.ID))
 
 	if round, err := models.LoadRoundById(ctx, user.RoundID); err != nil {
 		log.Warn().AnErr("err", err).Msg("Error loading round")
