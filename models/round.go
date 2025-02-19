@@ -30,36 +30,37 @@ var rankingsByRoundId = make(map[int][]*Ranking)
 type Round struct {
 	BaseModel
 
-	GUID             uuid.UUID                       `gorm:"uniqueIndex,size:36" json:"guid"`
-	EnergyMax        uint                            `gorm:"default:250" json:"energy_max"`
-	EnergyRegen      uint                            `gorm:"default:10" json:"energy_regen"`
-	Starts           time.Time                       `json:"starts"`
-	Ends             time.Time                       `json:"ends"`
-	StartLand        uint                            `json:"start_land"`
-	Resources        []*Resource                     `gorm:"-" json:"resources"`
-	MapResources     map[string]*Resource            `gorm:"-" json:"-"`
-	MapResourcesById map[uint]*Resource              `gorm:"-" json:"-"`
-	Units            []*Unit                         `gorm:"-" json:"units"`
-	MapUnits         map[string]*Unit                `gorm:"-" json:"-"`
-	MapUnitsById     map[uint]*Unit                  `gorm:"-" json:"-"`
-	Buildings        []*Building                     `gorm:"-" json:"buildings"`
-	MapBuildings     map[string]*Building            `gorm:"-" json:"-"`
-	MapBuildingsById map[uint]*Building              `gorm:"-" json:"-"`
-	Top              []*Ranking                      `gorm:"-" json:"top"`
-	User             []*Ranking                      `gorm:"-" json:"finished"`
-	UserRank         int                             `gorm:"-" json:"user_rank"`
-	Tick             uint                            `gorm:"default:5" json:"tick"`
-	FoodSold         int                             `gorm:"default:0" json:"food_sold"`
-	FoodCost         float32                         `gorm:"default:2" json:"food_cost"`
-	WoodSold         int                             `gorm:"default:0" json:"wood_sold"`
-	WoodCost         float32                         `gorm:"default:2" json:"wood_cost"`
-	StoneSold        int                             `gorm:"default:0" json:"stone_sold"`
-	StoneCost        float32                         `gorm:"default:2" json:"stone_cost"`
-	MetalSold        int                             `gorm:"default:0" json:"metal_sold"`
-	MetalCost        float32                         `gorm:"default:2" json:"metal_cost"`
-	Market           []*RoundMarketResource          `gorm:"-" json:"-"`
-	MarketResources  map[string]*RoundMarketResource `gorm:"-" json:"-"`
-	Technologies     []*Technology                   `gorm:"-" json:"technology"`
+	GUID                uuid.UUID                       `gorm:"uniqueIndex,size:36" json:"guid"`
+	EnergyMax           uint                            `gorm:"default:250" json:"energy_max"`
+	EnergyRegen         uint                            `gorm:"default:10" json:"energy_regen"`
+	Starts              time.Time                       `json:"starts"`
+	Ends                time.Time                       `json:"ends"`
+	StartLand           uint                            `json:"start_land"`
+	Resources           []*Resource                     `gorm:"-" json:"resources"`
+	MapResources        map[string]*Resource            `gorm:"-" json:"-"`
+	MapResourcesById    map[uint]*Resource              `gorm:"-" json:"-"`
+	Units               []*Unit                         `gorm:"-" json:"units"`
+	MapUnits            map[string]*Unit                `gorm:"-" json:"-"`
+	MapUnitsById        map[uint]*Unit                  `gorm:"-" json:"-"`
+	Buildings           []*Building                     `gorm:"-" json:"buildings"`
+	MapBuildings        map[string]*Building            `gorm:"-" json:"-"`
+	MapBuildingsById    map[uint]*Building              `gorm:"-" json:"-"`
+	Top                 []*Ranking                      `gorm:"-" json:"top"`
+	User                []*Ranking                      `gorm:"-" json:"finished"`
+	UserRank            int                             `gorm:"-" json:"user_rank"`
+	Tick                uint                            `gorm:"default:5" json:"tick"`
+	FoodSold            int                             `gorm:"default:0" json:"food_sold"`
+	FoodCost            float32                         `gorm:"default:2" json:"food_cost"`
+	WoodSold            int                             `gorm:"default:0" json:"wood_sold"`
+	WoodCost            float32                         `gorm:"default:2" json:"wood_cost"`
+	StoneSold           int                             `gorm:"default:0" json:"stone_sold"`
+	StoneCost           float32                         `gorm:"default:2" json:"stone_cost"`
+	MetalSold           int                             `gorm:"default:0" json:"metal_sold"`
+	MetalCost           float32                         `gorm:"default:2" json:"metal_cost"`
+	Market              []*RoundMarketResource          `gorm:"-" json:"-"`
+	MarketResources     map[string]*RoundMarketResource `gorm:"-" json:"-"`
+	Technologies        []*Technology                   `gorm:"-" json:"technology"`
+	MapTechnologiesById map[uint]*Technology            `gorm:"-" json:"-"`
 }
 
 func (round *Round) BeforeCreate(tx *gorm.DB) (err error) {
@@ -124,11 +125,11 @@ func (round *Round) loadTechnologies(baseContext context.Context, wg *sync.WaitG
 	defer span.End()
 	defer wg.Done()
 
-	log.Warn().Msg("loadTechnologies")
+	log.Info().Msg("loadTechnologies")
 
 	db.WithContext(ctx).Raw(`
 		SELECT
-			technologies.id, technologies.name, technologies.buff, round_technologies.available
+			technologies.id, technologies.name, technologies.buff, round_technologies.available, round_technologies.guid
 		FROM
 			round_technologies
 		INNER JOIN
@@ -145,6 +146,16 @@ func (round *Round) loadTechnologies(baseContext context.Context, wg *sync.WaitG
 		ON technologies.id = A.technology_id
 		WHERE round_technologies.technology_id = A.technology_id AND round_technologies.available = 1
 	`).Find(&round.Technologies)
+
+	round.MapTechnologiesById = make(map[uint]*Technology)
+	for _, technology := range round.Technologies {
+		log.Debug().
+			Str("guid", technology.GUID.String()).
+			Int("id", int(technology.ID)).
+			Msg("Saved: " + technology.Name)
+
+		round.MapTechnologiesById[technology.ID] = technology
+	}
 }
 
 func (round *Round) loadBuildings(ctx context.Context, wg *sync.WaitGroup) {
@@ -340,6 +351,16 @@ func (round *Round) GetBuildingById(id uint) *Building {
 
 	if building, ok := round.MapBuildingsById[id]; ok {
 		return building
+	}
+
+	return nil
+}
+
+func (round *Round) GetTechnologyById(id uint) *Technology {
+	log.Debug().Msg("GetTechnologyById:" + fmt.Sprint(id))
+
+	if technology, ok := round.MapTechnologiesById[id]; ok {
+		return technology
 	}
 
 	return nil
