@@ -317,6 +317,13 @@ func createTechnologies(db *gorm.DB, user *models.User) {
 		TechnologyID: 7,
 		Available:    false,
 	})
+
+	db.Create(&models.UserTechnology{
+		RoundID:      1,
+		UserID:       1,
+		TechnologyID: 1,
+		Level:        2,
+	})
 }
 
 func createBuffs(db *gorm.DB, user *models.User) {
@@ -668,6 +675,7 @@ func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE technologies")
 	db.Exec("DROP TABLE technology_levels")
 	db.Exec("DROP TABLE round_technologies")
+	db.Exec("DROP TABLE user_technologies")
 }
 
 func createConversations(db *gorm.DB) {
