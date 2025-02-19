@@ -30,37 +30,37 @@ var rankingsByRoundId = make(map[int][]*Ranking)
 type Round struct {
 	BaseModel
 
-	GUID                uuid.UUID                       `gorm:"uniqueIndex,size:36" json:"guid"`
-	EnergyMax           uint                            `gorm:"default:250" json:"energy_max"`
-	EnergyRegen         uint                            `gorm:"default:10" json:"energy_regen"`
-	Starts              time.Time                       `json:"starts"`
-	Ends                time.Time                       `json:"ends"`
-	StartLand           uint                            `json:"start_land"`
-	Resources           []*Resource                     `gorm:"-" json:"resources"`
-	MapResources        map[string]*Resource            `gorm:"-" json:"-"`
-	MapResourcesById    map[uint]*Resource              `gorm:"-" json:"-"`
-	Units               []*Unit                         `gorm:"-" json:"units"`
-	MapUnits            map[string]*Unit                `gorm:"-" json:"-"`
-	MapUnitsById        map[uint]*Unit                  `gorm:"-" json:"-"`
-	Buildings           []*Building                     `gorm:"-" json:"buildings"`
-	MapBuildings        map[string]*Building            `gorm:"-" json:"-"`
-	MapBuildingsById    map[uint]*Building              `gorm:"-" json:"-"`
-	Top                 []*Ranking                      `gorm:"-" json:"top"`
-	User                []*Ranking                      `gorm:"-" json:"finished"`
-	UserRank            int                             `gorm:"-" json:"user_rank"`
-	Tick                uint                            `gorm:"default:5" json:"tick"`
-	FoodSold            int                             `gorm:"default:0" json:"food_sold"`
-	FoodCost            float32                         `gorm:"default:2" json:"food_cost"`
-	WoodSold            int                             `gorm:"default:0" json:"wood_sold"`
-	WoodCost            float32                         `gorm:"default:2" json:"wood_cost"`
-	StoneSold           int                             `gorm:"default:0" json:"stone_sold"`
-	StoneCost           float32                         `gorm:"default:2" json:"stone_cost"`
-	MetalSold           int                             `gorm:"default:0" json:"metal_sold"`
-	MetalCost           float32                         `gorm:"default:2" json:"metal_cost"`
-	Market              []*RoundMarketResource          `gorm:"-" json:"-"`
-	MarketResources     map[string]*RoundMarketResource `gorm:"-" json:"-"`
-	Technologies        []*Technology                   `gorm:"-" json:"technology"`
-	MapTechnologiesById map[uint]*Technology            `gorm:"-" json:"-"`
+	GUID                uuid.UUID                          `gorm:"uniqueIndex,size:36" json:"guid"`
+	EnergyMax           uint                               `gorm:"default:250" json:"energy_max"`
+	EnergyRegen         uint                               `gorm:"default:10" json:"energy_regen"`
+	Starts              time.Time                          `json:"starts"`
+	Ends                time.Time                          `json:"ends"`
+	StartLand           uint                               `json:"start_land"`
+	Resources           []*Resource                        `gorm:"-" json:"resources"`
+	MapResources        map[string]*Resource               `gorm:"-" json:"-"`
+	MapResourcesById    map[uint]*Resource                 `gorm:"-" json:"-"`
+	Units               []*Unit                            `gorm:"-" json:"units"`
+	MapUnits            map[string]*Unit                   `gorm:"-" json:"-"`
+	MapUnitsById        map[uint]*Unit                     `gorm:"-" json:"-"`
+	Buildings           []*Building                        `gorm:"-" json:"buildings"`
+	MapBuildings        map[string]*Building               `gorm:"-" json:"-"`
+	MapBuildingsById    map[uint]*Building                 `gorm:"-" json:"-"`
+	Top                 []*Ranking                         `gorm:"-" json:"top"`
+	User                []*Ranking                         `gorm:"-" json:"finished"`
+	UserRank            int                                `gorm:"-" json:"user_rank"`
+	Tick                uint                               `gorm:"default:5" json:"tick"`
+	FoodSold            int                                `gorm:"default:0" json:"food_sold"`
+	FoodCost            float32                            `gorm:"default:2" json:"food_cost"`
+	WoodSold            int                                `gorm:"default:0" json:"wood_sold"`
+	WoodCost            float32                            `gorm:"default:2" json:"wood_cost"`
+	StoneSold           int                                `gorm:"default:0" json:"stone_sold"`
+	StoneCost           float32                            `gorm:"default:2" json:"stone_cost"`
+	MetalSold           int                                `gorm:"default:0" json:"metal_sold"`
+	MetalCost           float32                            `gorm:"default:2" json:"metal_cost"`
+	Market              []*RoundMarketResource             `gorm:"-" json:"-"`
+	MarketResources     map[uuid.UUID]*RoundMarketResource `gorm:"-" json:"-"`
+	Technologies        []*Technology                      `gorm:"-" json:"technology"`
+	MapTechnologiesById map[uint]*Technology               `gorm:"-" json:"-"`
 }
 
 func (round *Round) BeforeCreate(tx *gorm.DB) (err error) {
@@ -113,7 +113,7 @@ func (round *Round) createMarketResource(ctx context.Context, resource *Resource
 
 	go db.WithContext(ctx).Create(&RoundMarketResource{
 		RoundID:    round.ID,
-		ResourceID: resource.GUID,
+		ResourceID: resource.ID,
 		Sold:       0,
 		Bought:     0,
 		Value:      2,
@@ -320,6 +320,16 @@ func (round *Round) GetResourceByGuid(guid string) *Resource {
 	log.Debug().Msg("GetResourceByGuid:" + guid)
 
 	if resource, ok := round.MapResources[guid]; ok {
+		return resource
+	}
+
+	return nil
+}
+
+func (round *Round) GetResourceById(id uint) *Resource {
+	log.Debug().Int("resource", int(id)).Msg("GetResourceById")
+
+	if resource, ok := round.MapResourcesById[id]; ok {
 		return resource
 	}
 
@@ -598,6 +608,7 @@ func (round *Round) GetMarketInfo(baseContext context.Context) []*RoundMarketRes
 	log.Trace().Msg("GetMarketInfo")
 
 	if len(round.Market) > 0 {
+		log.Warn().Msg("Round Market Empty")
 		return round.Market
 	}
 
@@ -607,14 +618,14 @@ func (round *Round) GetMarketInfo(baseContext context.Context) []*RoundMarketRes
 	db.WithContext(ctx).Table("round_market_resources").Where("round_id = ?", round.ID).Scan(&round.Market)
 
 	log.Info().Msg("Populate Market Lookup")
-	round.MarketResources = make(map[string]*RoundMarketResource)
+	round.MarketResources = make(map[uuid.UUID]*RoundMarketResource)
 	for _, resource := range round.Market {
 		log.Debug().
 			Str("guid", resource.GUID.String()).
 			Int("id", int(resource.ID)).
-			Msg("Saved resource: " + resource.ResourceID.String())
+			Msg("Saved resource")
 
-		round.MarketResources[resource.ResourceID.String()] = resource
+		round.MarketResources[resource.GUID] = resource
 	}
 
 	return round.Market
