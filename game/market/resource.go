@@ -3,14 +3,24 @@ package market
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
-	"github.com/Vintral/pocket-realm/game/payloads"
 	"github.com/Vintral/pocket-realm/models"
 	"github.com/Vintral/pocket-realm/utils"
+	"github.com/google/uuid"
 
 	"github.com/rs/zerolog/log"
 )
+
+type MarketTransactionPayload struct {
+	Type     string    `json:"type"`
+	Quantity uint      `json:"quantity"`
+	Resource uuid.UUID `json:"resource"`
+}
+
+type MarketTransactionResult struct {
+	Type    string `json:"type"`
+	Success bool   `json:"success"`
+}
 
 func BuyResource(baseContext context.Context) {
 	user := baseContext.Value(utils.KeyUser{}).(*models.User)
@@ -18,22 +28,20 @@ func BuyResource(baseContext context.Context) {
 	ctx, span := utils.StartSpan(baseContext, "market-buy-resource")
 	defer span.End()
 
-	var payload payloads.MarketTransactionPayload
+	var payload MarketTransactionPayload
 	err := json.Unmarshal(baseContext.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		log.Warn().AnErr("Err", err).Msg(err.Error())
 		return
 	}
 
-	log.Info().Msg(fmt.Sprint("BuyResource:", user.ID, payload.GUID, payload.Quantity))
-
-	if result := models.BuyResource(ctx, user, payload.Quantity, payload.GUID); result {
-		user.Connection.WriteJSON(payloads.MarketTransactionResult{
+	if success := user.BuyResource(ctx, payload.Quantity, payload.Resource); success {
+		user.Connection.WriteJSON(MarketTransactionResult{
 			Type:    "MARKET_BOUGHT",
 			Success: true,
 		})
 	} else {
-		user.Connection.WriteJSON(payloads.MarketTransactionResult{
+		user.Connection.WriteJSON(MarketTransactionResult{
 			Type:    "MARKET_BOUGHT",
 			Success: false,
 		})
@@ -46,22 +54,20 @@ func SellResource(baseContext context.Context) {
 	ctx, span := utils.StartSpan(baseContext, "market-sell-resource")
 	defer span.End()
 
-	var payload payloads.MarketTransactionPayload
+	var payload MarketTransactionPayload
 	err := json.Unmarshal(baseContext.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		log.Warn().AnErr("Err", err).Msg(err.Error())
 		return
 	}
 
-	log.Info().Msg("SellResource: " + fmt.Sprint(user.ID))
-
-	if result := models.SellResource(ctx, user, payload.Quantity, payload.GUID); result {
-		user.Connection.WriteJSON(payloads.MarketTransactionResult{
+	if result := user.SellResource(ctx, payload.Quantity, payload.Resource); result {
+		user.Connection.WriteJSON(MarketTransactionResult{
 			Type:    "MARKET_SOLD",
 			Success: true,
 		})
 	} else {
-		user.Connection.WriteJSON(payloads.MarketTransactionResult{
+		user.Connection.WriteJSON(MarketTransactionResult{
 			Type:    "MARKET_SOLD",
 			Success: false,
 		})
