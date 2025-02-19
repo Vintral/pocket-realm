@@ -92,6 +92,7 @@ func main() {
 		createConversations(db)
 		createEvents(db, round)
 		createRankings(db, finished, round)
+		createResourceMarket(db, round)
 		createBlackMarket(db)
 		createMercenaryMarket(db, unit, round)
 	}
@@ -630,6 +631,20 @@ func createBlackMarket(db *gorm.DB) {
 		UserID:    1,
 		Purchased: time.Now(),
 	})
+}
+
+func createResourceMarket(db *gorm.DB, round *models.Round) {
+	log.Info().Int("round", int(round.ID)).Msg("createResourceMarket")
+
+	vals := [...]uint{2, 3, 4, 5}
+
+	for _, resource := range vals {
+		db.Create(&models.RoundMarketResource{
+			RoundID:    round.ID,
+			ResourceID: resource,
+			Value:      2,
+		})
+	}
 }
 
 func createMercenaryMarket(db *gorm.DB, unit *models.RoundUnit, round *models.Round) {
