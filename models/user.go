@@ -51,22 +51,6 @@ type User struct {
 	DB           *gorm.DB        `gorm:"-" json:"-"`
 }
 
-type RankingSnapshot struct {
-	Rank     int     `gorm:"-" json:"rank"`
-	Username string  `json:"username"`
-	Avatar   int     `gorm:"-" json:"avatar"`
-	Power    float64 `json:"power"`
-	Land     float64 `json:"land"`
-}
-
-func (r RankingSnapshot) MarshalBinary() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func (r RankingSnapshot) UnMarshalBinary(data []byte, resp interface{}) error {
-	return json.Unmarshal(data, resp)
-}
-
 func (user *User) BeforeCreate(tx *gorm.DB) (err error) {
 	user.GUID = uuid.New()
 	return
@@ -368,15 +352,6 @@ func (user *User) UpdateRank(base context.Context) {
 	if result.Err() != nil {
 		log.Warn().AnErr("err", result.Err()).Msg("Error updating redis rank")
 		return
-	}
-
-	if err := redisClient.Set(
-		ctx,
-		fmt.Sprint(user.RoundID)+"-snapshot-"+fmt.Sprint(user.ID),
-		&RankingSnapshot{Username: user.Username, Power: math.Floor(score), Land: math.Floor(user.RoundData.Land)},
-		0,
-	).Err(); err != nil {
-		log.Warn().AnErr("err", err).Msg("Error updating redis snapshot")
 	}
 }
 
