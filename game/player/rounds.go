@@ -16,10 +16,6 @@ type PlayRoundRequest struct {
 	Round string `json:"round"`
 }
 
-// type MarkEventSeenRequest struct {
-// 	Event string `json:"event"`
-// }
-
 type PlayRoundResult struct {
 	Type  string      `json:"type"`
 	User  models.User `json:"user"`
@@ -68,13 +64,13 @@ func PlayRound(baseContext context.Context) {
 				})
 			}
 		} else {
-			log.Warn().Str("guid", payload.Round).Msg("Error loading round")
+			log.Warn().AnErr("err", err).Str("guid", payload.Round).Msg("Error loading round")
 			user.Connection.WriteJSON(PlayRoundResult{
 				Type: "PLAY_ROUND_ERROR",
 			})
 		}
 	} else {
-		log.Warn().Str("guid", payload.Round).Msg("Error parsing round guid")
+		log.Warn().AnErr("err", err).Str("guid", payload.Round).Msg("Error parsing round guid")
 		user.Connection.WriteJSON(PlayRoundResult{
 			Type: "PLAY_ROUND_ERROR",
 		})
