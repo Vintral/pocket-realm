@@ -516,10 +516,9 @@ func GetPastRounds(baseContext context.Context, user *User, c chan []*Round) {
 		round = round.Clone()
 		round.UserRank = getRank(ctx, int(user.ID), round)
 
-		query := `SELECT place, power, land, username AS name, users.avatar FROM rankings INNER JOIN users ON users.id = rankings.user_id WHERE rankings.round_id = ` + fmt.Sprint(round.ID) + ` LIMIT 10`
-		log.Warn().Str("query", query).Msg("Built Query")
+		query := `SELECT rank, score, username AS name, users.avatar FROM rankings INNER JOIN users ON users.id = rankings.user_id WHERE rankings.round_id = ` + fmt.Sprint(round.ID) + ` LIMIT 10`
 		if err := db.WithContext(ctx).Raw(query).Scan(&round.Top).Error; err != nil {
-			log.Warn().Err(err).Msg("Error loading round ranks")
+			log.Warn().AnErr("err", err).Msg("Error loading round ranks")
 		}
 
 		log.Warn().Any("data", round.Top).Msg("<><><><><> Round Data")
