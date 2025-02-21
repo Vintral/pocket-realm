@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"os"
 	"strconv"
 	"time"
@@ -217,6 +216,72 @@ func createUserTables(db *gorm.DB, round *models.Round) {
 		UserID:         1,
 		RoundID:        2,
 		CharacterClass: "warlord",
+		Energy:         int(round.EnergyMax),
+		Gold:           1,
+		TickGold:       1,
+		Housing:        1,
+		Population:     1,
+		Food:           1,
+		TickFood:       1,
+		Wood:           1,
+		Metal:          1,
+		Faith:          1,
+		Stone:          1,
+		Mana:           1,
+		Land:           1,
+		FreeLand:       1,
+		BuildPower:     1,
+		RecruitPower:   1,
+	})
+
+	db.Create(&models.UserRound{
+		UserID:         2,
+		RoundID:        2,
+		CharacterClass: "merchant",
+		Energy:         int(round.EnergyMax),
+		Gold:           1,
+		TickGold:       1,
+		Housing:        1,
+		Population:     1,
+		Food:           1,
+		TickFood:       1,
+		Wood:           1,
+		Metal:          1,
+		Faith:          1,
+		Stone:          1,
+		Mana:           1,
+		Land:           1,
+		FreeLand:       1,
+		BuildPower:     1,
+		RecruitPower:   1,
+	})
+
+	db.Create(&models.UserRound{
+		UserID:         3,
+		RoundID:        2,
+		CharacterClass: "thief",
+		Energy:         int(round.EnergyMax),
+		Gold:           1,
+		TickGold:       1,
+		Housing:        1,
+		Population:     1,
+		Food:           1,
+		TickFood:       1,
+		Wood:           1,
+		Metal:          1,
+		Faith:          1,
+		Stone:          1,
+		Mana:           1,
+		Land:           1,
+		FreeLand:       1,
+		BuildPower:     1,
+		RecruitPower:   1,
+	})
+
+	db.Create(&models.UserRound{
+		UserID:         4,
+		RoundID:        2,
+		CharacterClass: "priest",
 		Energy:         int(round.EnergyMax),
 		Gold:           1,
 		TickGold:       1,
@@ -560,9 +625,8 @@ func createRankings(db *gorm.DB, round *models.Round, current *models.Round) {
 		db.Create(&models.Ranking{
 			UserID:  user.ID,
 			RoundID: round.ID,
-			Place:   uint(i) + 1,
-			Power:   power,
-			Land:    land,
+			Rank:    uint(i) + 1,
+			Score:   power,
 		})
 
 		result := redis.ZAdd(
@@ -574,14 +638,14 @@ func createRankings(db *gorm.DB, round *models.Round, current *models.Round) {
 			log.Warn().AnErr("err", result.Err()).Msg("Error adding ranking")
 		}
 
-		if err := redis.Set(
-			context.Background(),
-			fmt.Sprint(current.ID)+"-snapshot-"+fmt.Sprint(user.ID),
-			&models.RankingSnapshot{Username: user.Username, Power: math.Floor(float64(power)), Land: math.Floor(float64(land))},
-			0,
-		).Err(); err != nil {
-			log.Warn().AnErr("err", err).Msg("Error updating redis snapshot")
-		}
+		// if err := redis.Set(
+		// 	context.Background(),
+		// 	fmt.Sprint(current.ID)+"-snapshot-"+fmt.Sprint(user.ID),
+		// 	&models.RankingSnapshot{Username: user.Username, Score: math.Floor(float64(power))},
+		// 	0,
+		// ).Err(); err != nil {
+		// 	log.Warn().AnErr("err", err).Msg("Error updating redis snapshot")
+		// }
 	}
 }
 
