@@ -2,7 +2,6 @@ package rankings
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"strconv"
@@ -68,8 +67,9 @@ func getRankings(base context.Context, round int, start int64, count int64, c ch
 	defer span.End()
 
 	log.Warn().Msg("getRankings: " + fmt.Sprint(round) + " - " + fmt.Sprint(start) + " - " + fmt.Sprint(count))
+	log.Warn().Str("rankings-key", getRankingsKey(round)).Send()
 
-	result, err := redisClient.ZRangeArgs(
+	if result, err := redisClient.ZRangeArgsWithScores(
 		ctx,
 		redisDef.ZRangeArgs{
 			Key:     getRankingsKey(round),
@@ -80,58 +80,98 @@ func getRankings(base context.Context, round int, start int64, count int64, c ch
 			Offset:  start,
 			Count:   count,
 		},
-	).Result()
-	if err != nil {
-		log.Warn().AnErr("error", err).Msg("Error retrieving rankings")
-	}
+	).Result(); err == nil {
+		log.Warn().Int("results", len(result)).Msg("Yeah we cooking")
+		wg := new(sync.WaitGroup)
+		wg.Add(len(result))
+		ret := make([]models.RankingSnapshot, len(result))
 
-	if len(result) < 1 {
-		c <- nil
-	}
+		firstRank := -1
+		for i, v := range result {
+			if i == 0 {
+				if firstId, err := strconv.Atoi(v.Member.(string)); err != nil {
+					log.Error().AnErr("err", err).Any("user", v.Member).Msg("Error converting userId to int")
+					c <- nil
+					return
+				} else {
+					firstRank = getRank(ctx, round, firstId)
+				}
+			}
 
-	firstRank, err := strconv.Atoi(result[0])
-	if err != nil {
-		c <- nil
+			go func() {
+				defer wg.Done()
+
+				// res := redisClient.Get(
+				// 	ctx,
+				// 	fmt.Sprint(round)+"-snapshot-"+v,
+				// )
+
+				// var data models.RankingSnapshot
+				// err = json.Unmarshal([]byte(res.Val()), &data)
+				// if err != nil {
+				// 	log.Warn().AnErr("error", err).Msg("Error decoding snapshot")
+				// 	ret[i] = models.RankingSnapshot{}
+				// } else {
+				// 	ret[i] = data
+				// }
+
+				// if res.Val() == redisDef.Nil.Error() {
+				// 	log.Warn().Msg("Key not found")
+				// }
+
+				log.Info().Int("i", i).Any("v", v).Msg("Retrieving User")
+				// var snapshot *models.RankingSnapshot
+				userId, _ := strconv.Atoi(v.Member.(string))
+
+				var data *struct {
+					Username string `json:"username"`
+					Avatar   int    `json:"avatar"`
+					Class    string `gorm:"column:character_class" json:"class"`
+				}
+				if err := db.WithContext(ctx).Table("users").Select("users.avatar, users.username, user_rounds.character_class").
+					Joins("INNER JOIN user_rounds ON users.id = user_rounds.user_id").
+					Where("user_rounds.user_id = ? AND user_rounds.round_id = ?", userId, round).
+					Scan(&data).Error; err == nil {
+
+					ret[i].Class = data.Class
+					ret[i].Avatar = data.Avatar
+					ret[i].Username = data.Username
+					ret[i].Score = v.Score
+				} else {
+					log.Warn().AnErr("err", err).Str("user", v.Member.(string)).Msg("Error getting rank user's info")
+				}
+
+				ret[i].Rank = i + firstRank + 1
+			}()
+			log.Warn().Int("i", i).Msg("Fired off go routine")
+		}
+		wg.Wait()
+
+		c <- ret
 		return
+	} else {
+		log.Warn().AnErr("err", err).Msg("Error loading rank")
 	}
-	firstRank = getRank(ctx, round, firstRank)
 
-	wg := new(sync.WaitGroup)
-	wg.Add(len(result))
-	ret := make([]models.RankingSnapshot, len(result))
-	for i, v := range result {
-		go func() {
-			defer wg.Done()
+	c <- nil
 
-			res := redisClient.Get(
-				ctx,
-				fmt.Sprint(round)+"-snapshot-"+v,
-			)
+	// firstRank, err := strconv.Atoi(result[0])
+	// if err != nil {
+	// 	c <- nil
+	// 	return
+	// }
+	// firstRank = getRank(ctx, round, firstRank)
 
-			var data models.RankingSnapshot
-			err = json.Unmarshal([]byte(res.Val()), &data)
-			if err != nil {
-				log.Warn().AnErr("error", err).Msg("Error decoding snapshot")
-				ret[i] = models.RankingSnapshot{}
-			} else {
-				ret[i] = data
-			}
+}
 
-			if res.Val() == redisDef.Nil.Error() {
-				log.Warn().Msg("Key not found")
-			}
+func getNearBounds(baseContext context.Context, user *models.User) int64 {
+	ctx, span := Tracer.Start(baseContext, "get-near-bounds")
+	defer span.End()
 
-			var u *models.User
-			db.WithContext(ctx).Table("users").Select("avatar").Where("id = ?", v).Scan(&u)
+	rank := getRank(ctx, user.RoundID, int(user.ID))
+	spots := 10
 
-			avatar, _ := strconv.Atoi(u.Avatar)
-			ret[i].Avatar = avatar
-			ret[i].Rank = i + firstRank + 1
-		}()
-	}
-	wg.Wait()
-
-	c <- ret
+	return int64(math.Max(float64(rank-spots), 0))
 }
 
 func RetrieveRankings(base context.Context) {
@@ -144,12 +184,17 @@ func RetrieveRankings(base context.Context) {
 
 	c := make(chan []models.RankingSnapshot)
 	d := make(chan []models.RankingSnapshot)
-	nearResults := int64(3)
 
-	go getRankings(ctx, user.RoundID, 0, 20, c)
-	go getRankings(ctx, user.RoundID, int64(getNearStart(ctx, user, nearResults)), int64(nearResults), d)
+	start := getNearBounds(ctx, user)
+
+	go getRankings(ctx, user.RoundID, 0, 15, c)
+	go getRankings(ctx, user.RoundID, start, 15, d)
 
 	top, near := <-c, <-d
+
+	fmt.Println("||||||||||||||||||||||||||||||||||||||||||||||||||||")
+	fmt.Println(top)
+	fmt.Println("||||||||||||||||||||||||||||||||||||||||||||||||||||")
 
 	user.Connection.WriteJSON(RankingsResult{
 		Type: "RANKINGS",
