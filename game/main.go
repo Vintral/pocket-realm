@@ -280,6 +280,8 @@ func listen(conn *websocket.Conn) {
 			market.BuyMercenary(ctx)
 		case "BUY_RESOURCE":
 			market.BuyResource(ctx)
+		case "CHANGE_AVATAR":
+			player.ChangeAvatar(ctx)
 		case "EXPLORE":
 			actions.Explore(ctx)
 		case "GATHER":
