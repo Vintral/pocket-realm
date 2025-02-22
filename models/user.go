@@ -880,6 +880,21 @@ func (user *User) takeBuilding(ctx context.Context, buildingid int, amount int) 
 	return false
 }
 
+func (user *User) ChangeAvatar(baseContext context.Context, avatar string) bool {
+	ctx, span := Tracer.Start(baseContext, "user.ChangeAvatar")
+	defer span.End()
+
+	log.Info().Int("user", int(user.ID)).Str("avatar", avatar).Msg("user.ChangeAvatar")
+
+	user.Avatar = avatar
+	err := db.WithContext(ctx).Save(&user).Error
+	if err != nil {
+		log.Warn().AnErr("err", err).Msg("Error saving user")
+	}
+
+	return err == nil
+}
+
 func (user *User) IsPlayingRound(ctx context.Context, round int) bool {
 	log.Info().Uint("user", user.ID).Int("round", round).Msg("IsPlayingRound")
 
