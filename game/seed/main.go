@@ -477,7 +477,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		Email:        "jeffrey.heater@gmail.com",
 		Admin:        true,
 		Username:     "Vintral",
-		Avatar:       "1",
+		Avatar:       "m1",
 		RoundID:      int(round.ID),
 		RoundPlaying: round.GUID,
 	}
@@ -491,7 +491,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		Email:    "jeffrey.heater0@gmail.com",
 		Admin:    true,
 		Username: "Trilanni",
-		Avatar:   "2",
+		Avatar:   "f2",
 	}
 	db.Create(&user)
 	user.Join(context.Background(), &round)
@@ -500,7 +500,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		Email:        "jeffrey.heater1@gmail.com",
 		Admin:        true,
 		Username:     "Vintral1",
-		Avatar:       "3",
+		Avatar:       "m3",
 		RoundID:      1,
 		RoundPlaying: round.GUID,
 	}
@@ -511,7 +511,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		Email:        "jeffrey.heater2@gmail.com",
 		Admin:        true,
 		Username:     "Vintral2",
-		Avatar:       "4",
+		Avatar:       "f4",
 		RoundID:      1,
 		RoundPlaying: round.GUID,
 	}
@@ -522,7 +522,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		Email:        "jeffrey.heater3@gmail.com",
 		Admin:        true,
 		Username:     "Vintral3",
-		Avatar:       "5",
+		Avatar:       "m5",
 		RoundID:      1,
 		RoundPlaying: round.GUID,
 	}
@@ -533,7 +533,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		Email:        "jeffrey.heater4@gmail.com",
 		Admin:        true,
 		Username:     "Vintral4",
-		Avatar:       "6",
+		Avatar:       "f6",
 		RoundID:      1,
 		RoundPlaying: round.GUID,
 	}
@@ -544,7 +544,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		Email:        "jeffrey.heater5@gmail.com",
 		Admin:        true,
 		Username:     "Vintral5",
-		Avatar:       "1",
+		Avatar:       "m1",
 		RoundID:      1,
 		RoundPlaying: round.GUID,
 	}
