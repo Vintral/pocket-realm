@@ -14,13 +14,14 @@ import (
 type Technology struct {
 	BaseModel
 
-	GUID      uuid.UUID          `gorm:"uniqueIndex,size:36" json:"guid"`
-	Name      string             `json:"name"`
-	Buff      uint               `json:"-"`
-	Available bool               `gorm:"->;-:migration" json:"-"`
-	Levels    []*TechnologyLevel `gorm:"-" json:"-"`
-	Level     uint               `gorm:"-" json:"level"`
-	Cost      uint               `gorm:"-" json:"cost"`
+	GUID        uuid.UUID          `gorm:"uniqueIndex,size:36" json:"guid"`
+	Name        string             `json:"name"`
+	Buff        uint               `json:"-"`
+	Description string             `json:"description"`
+	Available   bool               `gorm:"->;-:migration" json:"-"`
+	Levels      []*TechnologyLevel `gorm:"-" json:"-"`
+	Level       uint               `gorm:"-" json:"level"`
+	Cost        uint               `gorm:"-" json:"cost"`
 }
 
 func (technology *Technology) BeforeCreate(tx *gorm.DB) (err error) {
@@ -52,6 +53,9 @@ func (technology *Technology) LoadForUser(baseContext context.Context, wg *sync.
 	tech.ID = technology.ID
 	tech.GUID = technology.GUID
 	tech.Name = technology.Name
+	tech.Description = technology.Description
+
+	log.Warn().Str("description", tech.Description).Msg("LOAD TECHNOLOGY")
 
 	log.Trace().Any("guid", tech.GUID).Msg("LoadForUser")
 
@@ -72,17 +76,18 @@ func (technology *Technology) LoadForUser(baseContext context.Context, wg *sync.
 }
 
 func (technology *Technology) Dump() {
-	log.Trace().Msg("==================================")
-	log.Trace().Msg("ID: " + fmt.Sprint(technology.ID))
-	log.Trace().Msg("Name: " + technology.Name)
-	log.Trace().Msg("Buff: " + fmt.Sprint(technology.Buff))
-	log.Trace().Msg("Available: " + fmt.Sprint(technology.Available))
-	log.Trace().Msg("Player Level: " + fmt.Sprint(technology.Level))
-	log.Trace().Msg("--------------LEVELS--------------")
+	log.Warn().Msg("==================================")
+	log.Warn().Msg("ID: " + fmt.Sprint(technology.ID))
+	log.Warn().Msg("Name: " + technology.Name)
+	log.Warn().Msg("Description: " + technology.Description)
+	log.Warn().Msg("Buff: " + fmt.Sprint(technology.Buff))
+	log.Warn().Msg("Available: " + fmt.Sprint(technology.Available))
+	log.Warn().Msg("Player Level: " + fmt.Sprint(technology.Level))
+	log.Warn().Msg("--------------LEVELS--------------")
 	for _, level := range technology.Levels {
-		log.Trace().Msg(fmt.Sprint(level.Level) + " -- " + fmt.Sprint(level.Cost))
+		log.Warn().Msg(fmt.Sprint(level.Level) + " -- " + fmt.Sprint(level.Cost))
 	}
-	log.Trace().Msg("==================================")
+	log.Warn().Msg("==================================")
 }
 
 func GetTechnologyIdForGuid(baseContext context.Context, tech uuid.UUID) uint {

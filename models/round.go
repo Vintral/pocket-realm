@@ -129,7 +129,7 @@ func (round *Round) loadTechnologies(baseContext context.Context, wg *sync.WaitG
 
 	db.WithContext(ctx).Raw(`
 		SELECT
-			technologies.id, technologies.name, technologies.buff, round_technologies.available, round_technologies.guid
+			technologies.id, technologies.name, technologies.description, technologies.buff, round_technologies.available, round_technologies.guid
 		FROM
 			round_technologies
 		INNER JOIN
