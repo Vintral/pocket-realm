@@ -357,9 +357,12 @@ func createTechnologies(db *gorm.DB, user *models.User) {
 	costs := [...]uint{250, 500, 1000, 2500}
 	fields := [...]string{"gold", "food", "research", "metal", "wood", "faith", "stone"}
 	for i, field := range fields {
+		f := cases.Title(language.English).String(field)
+
 		technology := &models.Technology{
-			Name: fmt.Sprintf("Improved %s", cases.Title(language.English).String(field)),
-			Buff: uint(i + 1),
+			Name:        fmt.Sprintf("Improved %s", f),
+			Description: fmt.Sprintf("+25%% %s Tick", f),
+			Buff:        uint(i + 1),
 		}
 		db.Create(technology)
 

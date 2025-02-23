@@ -28,7 +28,7 @@ type GetTechnologiesResult struct {
 }
 
 func GetTechnologies(baseContext context.Context) {
-	ctx, span := utils.StartSpan(baseContext, "library.get-technologies")
+	ctx, span := utils.StartSpan(baseContext, "library.getTechnologies")
 	defer span.End()
 
 	log.Warn().Msg("GetTechnologies")
@@ -77,10 +77,9 @@ func PurchaseTechnology(baseContext context.Context) {
 			technology.LoadForUser(ctx, nil, user, tech)
 			if user.PurchaseTechnology(ctx, tech) {
 				log.Info().Int("user", int(user.ID)).Int("technology", int(tech.ID)).Int("level", int(tech.Level+1)).Msg("Purchased technology level")
-				user.Connection.WriteJSON(PurchaseTechnologyResult{
-					Type:    "PURCHASE_TECHNOLOGY",
-					Success: true,
-				})
+
+				user.Refresh()
+				GetTechnologies(baseContext)
 				return
 			} else {
 				log.Warn().Int("user", int(user.ID)).Int("technology", int(tech.ID)).Int("level", int(tech.Level+1)).Msg("Failed to purchase technology level")
