@@ -125,7 +125,7 @@ func getRankings(base context.Context, round int, start int64, count int64, c ch
 
 				var data *struct {
 					Username string `json:"username"`
-					Avatar   int    `json:"avatar"`
+					Avatar   string `json:"avatar"`
 					Class    string `gorm:"column:character_class" json:"class"`
 				}
 				if err := db.WithContext(ctx).Table("users").Select("users.avatar, users.username, user_rounds.character_class").

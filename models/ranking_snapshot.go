@@ -10,7 +10,7 @@ import (
 type RankingSnapshot struct {
 	Rank     int     `gorm:"-" json:"rank"`
 	Username string  `gorm:"-" json:"username"`
-	Avatar   int     `gorm:"-" json:"avatar"`
+	Avatar   string  `gorm:"-" json:"avatar"`
 	Score    float64 `gorm:"-" json:"score"`
 	Class    string  `gorm:"column:character_class" json:"class"`
 }
@@ -28,7 +28,7 @@ func (ranking *RankingSnapshot) Dump() {
 ============================
 Rank: ` + fmt.Sprint(ranking.Rank) + `
 Username: ` + ranking.Username + `
-Avatar: ` + fmt.Sprint(ranking.Avatar) + `
+Avatar: ` + ranking.Avatar + `
 Score: ` + fmt.Sprint(ranking.Score) + `
 Class: ` + ranking.Class + `
 ============================
