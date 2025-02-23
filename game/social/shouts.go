@@ -8,6 +8,7 @@ import (
 
 	"github.com/Vintral/pocket-realm/models"
 	"github.com/Vintral/pocket-realm/utils"
+	"github.com/rs/zerolog/log"
 
 	"go.opentelemetry.io/otel/codes"
 )
@@ -63,7 +64,7 @@ func UnsubscribeShouts(base context.Context) {
 func SendShout(base context.Context) {
 	fmt.Println("SendShout")
 
-	_, span := utils.StartSpan(base, "send-shout")
+	ctx, span := utils.StartSpan(base, "send-shout")
 	defer span.End()
 
 	var payload ShoutPayload
@@ -76,14 +77,16 @@ func SendShout(base context.Context) {
 	user := base.Value(utils.KeyUser{}).(*models.User)
 
 	var shout *models.Shout
-	if err = shout.Create(user.ID, payload.Shout); err == nil {
+	if err = shout.Create(ctx, user.ID, payload.Shout); err == nil {
 		span.SetStatus(codes.Ok, "OK")
+		log.Info().Int("user", int(user.ID)).Str("shout", payload.Shout).Msg("Shout sent")
 	} else {
 		span.SetStatus(codes.Error, err.Error())
+		log.Warn().Err(err).Msg("Error sending shout")
 	}
 
 	user.Connection.WriteJSON(ShoutResult{
-		Type:    "SHOUT",
+		Type:    "SEND_SHOUT",
 		Success: err == nil,
 	})
 
@@ -91,7 +94,7 @@ func SendShout(base context.Context) {
 		Type: "SHOUT",
 		Shout: models.Shout{
 			User:           user.Username,
-			Avatar:         "",
+			Avatar:         user.Avatar,
 			CharacterClass: user.RoundData.CharacterClass,
 			CreatedAt:      time.Now(),
 			Shout:          payload.Shout,

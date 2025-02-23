@@ -12,7 +12,7 @@ import (
 type Shout struct {
 	BaseModel
 
-	GUID           uuid.UUID `gorm:"uniqueIndex,size:36" json:"guid"`
+	GUID           uuid.UUID `gorm:"uniqueIndex,size:36" json:"-"`
 	UserID         uint      `json:"-"`
 	User           string    `gorm:"-" json:"username"`
 	Avatar         string    `gorm:"-" json:"avatar"`
@@ -41,8 +41,8 @@ func (shout *Shout) AfterFind(tx *gorm.DB) (err error) {
 	return
 }
 
-func (shout *Shout) Create(userID uint, text string) error {
-	result := db.Create(&Shout{UserID: userID, Shout: text})
+func (shout *Shout) Create(context context.Context, userID uint, text string) error {
+	result := db.WithContext(context).Create(&Shout{UserID: userID, Shout: text})
 	return result.Error
 }
 
