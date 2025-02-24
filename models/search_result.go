@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -15,6 +16,7 @@ type SearchResult struct {
 	Username string    `json:"username"`
 	Avatar   string    `json:"avatar"`
 	Class    string    `json:"class"`
+	LastSeen time.Time `json:"last_seen"`
 }
 
 func (result *SearchResult) Dump() {
@@ -26,6 +28,7 @@ Avatar: ` + result.Avatar + `
 Class: ` + result.Class + `
 Rank: ` + fmt.Sprint(result.Rank) + `
 Score: ` + fmt.Sprint(result.Score) + `
+LastSeen: ` + result.LastSeen.String() + `
 ============================
 	`)
 }

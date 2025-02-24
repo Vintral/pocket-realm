@@ -37,7 +37,7 @@ func SearchUsers(baseContext context.Context) {
 		var data []*models.SearchResult
 		if err := db.WithContext(ctx).
 			Table("users").
-			Select("users.id, users.avatar, users.username, MAX(user_rounds.character_class) AS class, users.guid").
+			Select("users.id, users.avatar, users.username, MAX(user_rounds.character_class) AS class, users.guid, MAX(user_rounds.updated_at) AS last_seen").
 			Joins("LEFT JOIN user_rounds ON users.id = user_rounds.user_id").
 			Where("users.username LIKE ? AND user_rounds.round_id = ?", payload.Search+"%", user.RoundID).
 			Group("id, username, avatar, guid").
@@ -55,7 +55,7 @@ func SearchUsers(baseContext context.Context) {
 			if len(ret) < max {
 				if err := db.WithContext(ctx).
 					Table("users").
-					Select("users.id, users.avatar, users.username, MAX(user_rounds.character_class) AS class, users.guid").
+					Select("users.id, users.avatar, users.username, MAX(user_rounds.character_class) AS class, users.guid, MAX(user_rounds.updated_at) AS last_seen").
 					Joins("LEFT JOIN user_rounds ON users.id = user_rounds.user_id").
 					Where("users.username LIKE ? AND user_rounds.round_id = ?", "%"+payload.Search+"%", user.RoundID).
 					Group("id, username, avatar, guid").

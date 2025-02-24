@@ -28,7 +28,7 @@ func joinRoundIfNeeded(baseContext context.Context, user *models.User, round *mo
 	} else {
 		log.Info().Msg("User needs to join round")
 
-		user.Join(baseContext, round)
+		user.Join(baseContext, round, "")
 	}
 }
 
