@@ -914,15 +914,16 @@ func (user *User) IsPlayingRound(ctx context.Context, round int) bool {
 	return true
 }
 
-func (user *User) Join(ctx context.Context, round *Round) *User {
+func (user *User) Join(ctx context.Context, round *Round, classType string) *User {
 	log.Info().Str("round", round.GUID.String()).Msg("Joining round")
 
 	ctx, span := Tracer.Start(ctx, "user-join")
 	defer span.End()
 
 	data := &UserRound{
-		UserID:  user.ID,
-		RoundID: round.ID,
+		UserID:         user.ID,
+		RoundID:        round.ID,
+		CharacterClass: classType,
 		// Energy:   int(round.EnergyMax),
 		// Land:     float64(round.StartLand),
 		// FreeLand: float64(round.StartLand),
