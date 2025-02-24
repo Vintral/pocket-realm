@@ -6,6 +6,7 @@ import (
 
 	"github.com/Vintral/pocket-realm/models"
 	realmRedis "github.com/Vintral/pocket-realm/redis"
+	"gorm.io/gorm"
 
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -13,6 +14,22 @@ import (
 
 var redisClient *redis.Client
 var tracerProvider *trace.TracerProvider
+var db *gorm.DB
+
+func Initialize(tp *trace.TracerProvider, dbase *gorm.DB) {
+	rdb, err := realmRedis.Instance(tp)
+	if err != nil {
+		panic(err)
+	}
+
+	redisClient = rdb
+	db = dbase
+
+	tracerProvider = tp
+	go handleShouts()
+
+	subscribers = make(map[uint]*models.User)
+}
 
 func handleShouts() {
 	pubsub := redisClient.Subscribe(context.Background(), "SHOUT")
@@ -36,18 +53,4 @@ func handleShouts() {
 
 		span.End()
 	}
-}
-
-func Initialize(tp *trace.TracerProvider) {
-	rdb, err := realmRedis.Instance(tp)
-	if err != nil {
-		panic(err)
-	}
-
-	redisClient = rdb
-
-	tracerProvider = tp
-	go handleShouts()
-
-	subscribers = make(map[uint]*models.User)
 }

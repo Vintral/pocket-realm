@@ -197,7 +197,7 @@ func main() {
 	//==============================//
 	//	Module Initializations			//
 	//==============================//
-	social.Initialize(tp)
+	social.Initialize(tp, db)
 	rankings.Initialize(tp, db)
 
 	//==============================//
@@ -322,6 +322,8 @@ func listen(conn *websocket.Conn) {
 			models.LoadRoundForUser(ctx)
 		case "RULES":
 			application.GetRules(user)
+		case "SEARCH_USERS":
+			social.SearchUsers(ctx)
 		case "SELL_RESOURCE":
 			market.SellResource(ctx)
 		case "SHOUT":
