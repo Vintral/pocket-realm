@@ -81,7 +81,7 @@ func SearchUsers(baseContext context.Context) {
 	}
 
 	user.Connection.WriteJSON(searchResults{
-		Type:    "SEARCH_RESULT",
+		Type:    "SEARCH_RESULTS",
 		Results: ret,
 	})
 }
