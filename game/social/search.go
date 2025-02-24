@@ -3,6 +3,7 @@ package social
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/Vintral/pocket-realm/models"
 	"github.com/Vintral/pocket-realm/utils"
@@ -36,10 +37,10 @@ func SearchUsers(baseContext context.Context) {
 		var data []*models.SearchResult
 		if err := db.WithContext(ctx).
 			Table("users").
-			Select("users.avatar, users.username, MAX(user_rounds.character_class) AS class, users.guid").
+			Select("users.id, users.avatar, users.username, MAX(user_rounds.character_class) AS class, users.guid").
 			Joins("LEFT JOIN user_rounds ON users.id = user_rounds.user_id").
 			Where("users.username LIKE ? AND user_rounds.round_id = ?", payload.Search+"%", user.RoundID).
-			Group("username, avatar, guid").
+			Group("id, username, avatar, guid").
 			Order("username ASC").
 			Limit(max).
 			Scan(&data).Error; err == nil {
@@ -54,10 +55,10 @@ func SearchUsers(baseContext context.Context) {
 			if len(ret) < max {
 				if err := db.WithContext(ctx).
 					Table("users").
-					Select("users.avatar, users.username, MAX(user_rounds.character_class) AS class, users.guid").
+					Select("users.id, users.avatar, users.username, MAX(user_rounds.character_class) AS class, users.guid").
 					Joins("LEFT JOIN user_rounds ON users.id = user_rounds.user_id").
 					Where("users.username LIKE ? AND user_rounds.round_id = ?", "%"+payload.Search+"%", user.RoundID).
-					Group("username, avatar, guid").
+					Group("id, username, avatar, guid").
 					Order("username ASC").
 					Limit(max).
 					Scan(&data).Error; err == nil {
@@ -78,6 +79,17 @@ func SearchUsers(baseContext context.Context) {
 
 	if len(ret) > max {
 		ret = ret[0:max]
+	}
+
+	for _, u := range ret {
+		if u.Class != "" {
+			if result := redisClient.ZRevRankWithScore(ctx, fmt.Sprintf("%d-rankings", user.ID), fmt.Sprint(u.ID)); result.Err() == nil {
+				u.Rank = int(result.Val().Rank) + 1
+				u.Score = int(result.Val().Score)
+			} else {
+				log.Warn().Err(result.Err()).Int("user", u.ID).Msg("Error getting ranking for search result user")
+			}
+		}
 	}
 
 	user.Connection.WriteJSON(searchResults{
