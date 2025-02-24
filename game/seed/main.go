@@ -497,7 +497,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		Avatar:   "f2",
 	}
 	db.Create(&user)
-	user.Join(context.Background(), &round)
+	user.Join(context.Background(), &round, "mage")
 
 	user = &models.User{
 		Email:        "jeffrey.heater1@gmail.com",
@@ -508,7 +508,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		RoundPlaying: round.GUID,
 	}
 	db.Create(&user)
-	user.Join(context.Background(), &round)
+	user.Join(context.Background(), &round, "priest")
 
 	user = &models.User{
 		Email:        "jeffrey.heater2@gmail.com",
@@ -519,7 +519,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		RoundPlaying: round.GUID,
 	}
 	db.Create(&user)
-	user.Join(context.Background(), &round)
+	user.Join(context.Background(), &round, "merchant")
 
 	user = &models.User{
 		Email:        "jeffrey.heater3@gmail.com",
@@ -530,7 +530,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		RoundPlaying: round.GUID,
 	}
 	db.Create(&user)
-	user.Join(context.Background(), &round)
+	user.Join(context.Background(), &round, "warlord")
 
 	user = &models.User{
 		Email:        "jeffrey.heater4@gmail.com",
@@ -541,7 +541,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		RoundPlaying: round.GUID,
 	}
 	db.Create(&user)
-	user.Join(context.Background(), &round)
+	user.Join(context.Background(), &round, "thief")
 
 	user = &models.User{
 		Email:        "jeffrey.heater5@gmail.com",
@@ -552,7 +552,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		RoundPlaying: round.GUID,
 	}
 	db.Create(&user)
-	user.Join(context.Background(), &round)
+	user.Join(context.Background(), &round, "mage")
 }
 
 func createShouts(db *gorm.DB) {
