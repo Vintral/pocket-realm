@@ -33,23 +33,37 @@ type addContactResult struct {
 	Success bool   `json:"success"`
 }
 
-func loadContacts(baseContext context.Context, user *models.User, contactType string, wg *sync.WaitGroup, c chan []models.Contact) {
+func loadContacts(baseContext context.Context, user *models.User, category string, wg *sync.WaitGroup, c chan []models.Contact) {
 	ctx, span := utils.StartSpan(baseContext, "loadContacts")
 	defer span.End()
 
-	log.Info().Int("user", int(user.ID)).Str("type", contactType).Msg("loadContacts")
+	log.Info().Int("user", int(user.ID)).Str("type", category).Msg("loadContacts")
 
 	var ret []models.Contact
 
-	if err := db.WithContext(ctx).
-		Table("contacts").
-		Select("contact_id, user_id, type, note, users.guid AS contact_guid, users.avatar").
-		Joins("INNER JOIN users ON users.id = contacts.contact_id").
-		Where("user_id = ? AND type = ?", user.ID, contactType).
-		Scan(&ret).Error; err != nil {
-		log.Error().Err(err).Msg("Error retrieving contacts")
+	if user.RoundID == 0 {
+		if err := db.WithContext(ctx).
+			Table("contacts").
+			Select("contact_id, user_id, category, note, users.guid AS contact_guid, username, users.avatar").
+			Joins("INNER JOIN users ON users.id = contacts.contact_id").
+			Where("user_id = ? AND category = ?", user.ID, category).
+			Scan(&ret).Error; err != nil {
+			log.Error().Err(err).Msg("Error retrieving contacts")
+		} else {
+			log.Info().Int("records", len(ret)).Msg("Retrieved contacts")
+		}
 	} else {
-		log.Info().Int("records", len(ret)).Msg("Retrieved contacts")
+		if err := db.WithContext(ctx).
+			Table("contacts").
+			Select("contact_id, contacts.user_id, note, users.guid AS contact_guid, username, users.avatar, user_rounds.character_class").
+			Joins("INNER JOIN users ON users.id = contacts.contact_id").
+			Joins("LEFT JOIN user_rounds ON contacts.user_id = user_rounds.user_id").
+			Where("contacts.user_id = ? AND category = ? AND user_rounds.round_id = ?", user.ID, category, user.RoundID).
+			Scan(&ret).Error; err != nil {
+			log.Error().Err(err).Msg("Error retrieving contacts")
+		} else {
+			log.Info().Int("records", len(ret)).Msg("Retrieved contacts")
+		}
 
 		for _, contact := range ret {
 			contact.Dump()
@@ -81,7 +95,7 @@ func AddContact(baseContext context.Context) {
 				}).Error; err == nil {
 					success = true
 					GetContacts(baseContext)
-					log.Info().Int("user", int(user.ID)).Int("contact", *contactId).Str("type", payload.Type).Msg("Added Contact")
+					log.Info().Int("user", int(user.ID)).Int("contact", *contactId).Str("category", payload.Category).Msg("Added Contact")
 				}
 			} else {
 				log.Warn().Msg("Contact already exists")
@@ -115,8 +129,6 @@ func GetContacts(baseContext context.Context) {
 		go loadContacts(baseContext, user, "friend", wg, f)
 		go loadContacts(baseContext, user, "enemy", wg, e)
 		wg.Wait()
-
-		log.Info().Msg("*******************   Wait Groups Done")
 
 		friends, enemies := <-f, <-e
 
