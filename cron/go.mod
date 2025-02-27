@@ -5,7 +5,7 @@ go 1.22.0
 toolchain go1.22.4
 
 require (
-	github.com/Vintral/pocket-realm/models v0.0.0-20250119184110-ff55e4f57a54
+	github.com/Vintral/pocket-realm/models v0.0.0-20250224214221-8d7d66ef132f
 	github.com/Vintral/pocket-realm/redis v0.0.0-20250119184110-ff55e4f57a54
 	github.com/go-co-op/gocron/v2 v2.14.2
 	github.com/redis/go-redis/v9 v9.7.0
