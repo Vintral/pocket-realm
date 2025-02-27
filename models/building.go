@@ -185,18 +185,34 @@ func (building *Building) Build(ctx context.Context, user *User, energy uint) (f
 
 		building.takeCost(user, amount)
 		user.RoundData.Energy -= int(energy)
-		user.Dump()
 
-		if !user.UpdateRound(ctx, nil) {
-			fmt.Println(" oh noes")
-			temp.Quantity -= amount
-			if !user.updateBuildings(ctx, nil) {
-				fmt.Println("Rolled back")
-				return 0, errors.New("error-removing-buildings")
+		if err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			user.AddBuilding(ctx, building, amount)
+
+			if err := tx.WithContext(ctx).Save(&user).Error; err != nil {
+				return err
 			}
+
+			return nil
+		}); err != nil {
+			log.Error().Err(err).Msg(("Error building building"))
+
+			user.Refresh()
+			return 0, err
 		}
 
-		return amount, nil
+		// user.Dump()
+
+		// if !user.UpdateRound(ctx, nil) {
+		// 	log.Error().Msg("Error Updating User")
+		// 	temp.Quantity -= amount
+		// 	if !user.updateBuildings(ctx, nil) {
+		// 		fmt.Println("Rolled back")
+		// 		return 0, errors.New("error-removing-buildings")
+		// 	}
+		// }
+
+		// return amount, nil
 	}
 
 	fmt.Println("After Build")
@@ -206,29 +222,31 @@ func (building *Building) Build(ctx context.Context, user *User, energy uint) (f
 }
 
 func (building *Building) Dump() {
-	log.Trace().Msg("=============================")
-	log.Trace().Msg("ID:" + fmt.Sprint(building.ID))
-	log.Trace().Msg("GUID:" + fmt.Sprint(building.GUID))
-	log.Trace().Msg("Name:" + building.Name)
-	log.Trace().Msg("CostPoints:" + fmt.Sprint(building.CostPoints))
-	log.Trace().Msg("CostGold:" + fmt.Sprint(building.CostGold))
-	log.Trace().Msg("CostFood:" + fmt.Sprint(building.CostFood))
-	log.Trace().Msg("CostWood:" + fmt.Sprint(building.CostWood))
-	log.Trace().Msg("CostMetal:" + fmt.Sprint(building.CostMetal))
-	log.Trace().Msg("CostStone:" + fmt.Sprint(building.CostStone))
-	log.Trace().Msg("CostFaith:" + fmt.Sprint(building.CostFaith))
-	log.Trace().Msg("CostMana:" + fmt.Sprint(building.CostMana))
-	log.Trace().Msg("BonusField:" + fmt.Sprint(building.BonusField))
-	log.Trace().Msg("BonusValue:" + fmt.Sprint(building.BonusValue))
-	log.Trace().Msg("UpkeepGold:" + fmt.Sprint(building.UpkeepGold))
-	log.Trace().Msg("UpkeepFood:" + fmt.Sprint(building.UpkeepFood))
-	log.Trace().Msg("UpkeepWood:" + fmt.Sprint(building.UpkeepWood))
-	log.Trace().Msg("UpkeepMetal:" + fmt.Sprint(building.UpkeepMetal))
-	log.Trace().Msg("UpkeepStone:" + fmt.Sprint(building.UpkeepStone))
-	log.Trace().Msg("UpkeepFaith:" + fmt.Sprint(building.UpkeepFaith))
-	log.Trace().Msg("UpkeepMana:" + fmt.Sprint(building.UpkeepMana))
-	log.Trace().Msg("Available:" + fmt.Sprint(building.Available))
-	log.Trace().Msg("Buildable:" + fmt.Sprint(building.Buildable))
-	log.Trace().Msg("SupportsPartial:" + fmt.Sprint(building.SupportsPartial))
-	log.Trace().Msg("=============================")
+	log.Warn().Msg(`
+=============================")
+ID: ` + fmt.Sprint(building.ID) + `
+GUID: ` + fmt.Sprint(building.GUID) + `
+Name: ` + building.Name + `
+CostPoints: ` + fmt.Sprint(building.CostPoints) + `
+CostGold: ` + fmt.Sprint(building.CostGold) + `
+CostFood: ` + fmt.Sprint(building.CostFood) + `
+CostWood: ` + fmt.Sprint(building.CostWood) + `
+CostMetal: ` + fmt.Sprint(building.CostMetal) + `
+CostStone: ` + fmt.Sprint(building.CostStone) + `
+CostFaith: ` + fmt.Sprint(building.CostFaith) + `
+CostMana: ` + fmt.Sprint(building.CostMana) + `
+BonusField: ` + fmt.Sprint(building.BonusField) + `
+BonusValue: ` + fmt.Sprint(building.BonusValue) + `
+UpkeepGold: ` + fmt.Sprint(building.UpkeepGold) + `
+UpkeepFood: ` + fmt.Sprint(building.UpkeepFood) + `
+UpkeepWood: ` + fmt.Sprint(building.UpkeepWood) + `
+UpkeepMetal: ` + fmt.Sprint(building.UpkeepMetal) + `
+UpkeepStone: ` + fmt.Sprint(building.UpkeepStone) + `
+UpkeepFaith: ` + fmt.Sprint(building.UpkeepFaith) + `
+UpkeepMana: ` + fmt.Sprint(building.UpkeepMana) + `
+Available: ` + fmt.Sprint(building.Available) + `
+Buildable: ` + fmt.Sprint(building.Buildable) + `
+SupportsPartial: ` + fmt.Sprint(building.SupportsPartial) + `
+=============================
+	`)
 }
