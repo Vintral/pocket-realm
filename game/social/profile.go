@@ -6,6 +6,7 @@ import (
 
 	"github.com/Vintral/pocket-realm/models"
 	"github.com/Vintral/pocket-realm/utils"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
 
@@ -15,12 +16,15 @@ type profilePayload struct {
 }
 
 type profileResults struct {
-	Type    string `json:"type"`
-	Success bool   `json:"success"`
+	Type     string    `json:"type"`
+	Success  bool      `json:"success"`
+	Username string    `json:"username"`
+	UserGuid uuid.UUID `json:"guid"`
+	Avatar   string    `json:"avatar"`
 }
 
 func GetProfile(baseContext context.Context) {
-	_, span := utils.StartSpan(baseContext, "GetProfile")
+	ctx, span := utils.StartSpan(baseContext, "GetProfile")
 	defer span.End()
 
 	user := baseContext.Value(utils.KeyUser{}).(*models.User)
@@ -30,8 +34,19 @@ func GetProfile(baseContext context.Context) {
 		log.Info().Str("user", payload.Username).Msg("GetProfile")
 	}
 
-	user.Connection.WriteJSON(profileResults{
-		Type:    "PROFILE",
-		Success: true,
-	})
+	var profileUser *models.User
+	if err := db.WithContext(ctx).Table("users").Select("guid, username, avatar").Where("username = ?", payload.Username).Scan(&profileUser).Error; err == nil {
+		user.Connection.WriteJSON(profileResults{
+			Type:     "PROFILE",
+			Success:  profileUser.Username == payload.Username,
+			Username: payload.Username,
+			UserGuid: profileUser.GUID,
+			Avatar:   profileUser.Avatar,
+		})
+	} else {
+		user.Connection.WriteJSON(profileResults{
+			Type:    "PROFILE",
+			Success: false,
+		})
+	}
 }
