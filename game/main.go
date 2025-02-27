@@ -290,18 +290,20 @@ func listen(conn *websocket.Conn) {
 			social.GetConversations(ctx)
 		case "GET_EVENTS":
 			player.GetEvents(ctx)
+		case "GET_MERCENARY_MARKET":
+			market.GetMercenaryMarket(ctx)
 		case "GET_MESSAGES":
 			social.GetMessages(ctx)
+		case "GET_PROFILE":
+			social.GetProfile(ctx)
 		case "GET_RANKINGS":
 			rankings.RetrieveRankings(ctx)
 		case "GET_ROUNDS":
 			application.GetRounds(ctx)
-		case "GET_MERCENARY_MARKET":
-			market.GetMercenaryMarket(ctx)
-		case "GET_UNDERGROUND_MARKET":
-			market.GetUndergroundAuctions(ctx)
 		case "GET_TECHNOLOGIES":
 			library.GetTechnologies(ctx)
+		case "GET_UNDERGROUND_MARKET":
+			market.GetUndergroundAuctions(ctx)
 		case "PURCHASE_TECHNOLOGY":
 			library.PurchaseTechnology(ctx)
 		case "MARK_EVENT_SEEN":
