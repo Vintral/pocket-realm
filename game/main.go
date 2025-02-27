@@ -272,6 +272,8 @@ func listen(conn *websocket.Conn) {
 		}
 
 		switch payload.Type {
+		case "ADD_CONTACT":
+			social.AddContact(ctx)
 		case "BUILD":
 			actions.Build(ctx)
 		case "BUY_AUCTION":
@@ -286,6 +288,8 @@ func listen(conn *websocket.Conn) {
 			actions.Explore(ctx)
 		case "GATHER":
 			actions.Gather(ctx)
+		case "GET_CONTACTS":
+			social.GetContacts(ctx)
 		case "GET_CONVERSATIONS":
 			social.GetConversations(ctx)
 		case "GET_EVENTS":
