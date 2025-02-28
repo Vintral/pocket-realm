@@ -894,6 +894,8 @@ func createBuildings(db *gorm.DB) {
 	db.Create(&models.Building{Name: "workshop", BonusField: "build_power"})
 	db.Create(&models.Building{Name: "mine", BonusField: "metal_tick"})
 	db.Create(&models.Building{Name: "house", BonusField: "housing"})
+	db.Create(&models.Building{Name: "library", BonusField: "research_tick"})
+	db.Create(&models.Building{Name: "shrine", BonusField: "faith_tick"})
 
 	//================================//
 	// Building Defaults							//
@@ -989,6 +991,30 @@ func createBuildings(db *gorm.DB) {
 		CostStone:       2,
 		CostPoints:      2,
 		BonusValue:      2,
+		Available:       true,
+		Buildable:       true,
+		SupportsPartial: false,
+		StartWith:       0,
+	})
+	db.Create(&models.RoundBuilding{
+		BuildingID:      9,
+		RoundID:         0,
+		CostWood:        5,
+		CostStone:       2,
+		CostPoints:      2,
+		BonusValue:      3,
+		Available:       true,
+		Buildable:       true,
+		SupportsPartial: false,
+		StartWith:       0,
+	})
+	db.Create(&models.RoundBuilding{
+		BuildingID:      10,
+		RoundID:         0,
+		CostWood:        5,
+		CostStone:       2,
+		CostPoints:      2,
+		BonusValue:      3,
 		Available:       true,
 		Buildable:       true,
 		SupportsPartial: false,
