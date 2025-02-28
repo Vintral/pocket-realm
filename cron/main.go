@@ -157,6 +157,20 @@ func processRound(baseContext context.Context, roundid uint, waitgroup *sync.Wai
 		db.WithContext(ctx).Save(&user)
 	}
 
+	if round, err := models.LoadRoundById(ctx, int(roundid)); err == nil {
+		if err = db.WithContext(ctx).Exec("UPDATE user_rounds SET energy =  energy + ? WHERE energy < ? AND round_id = ?", round.EnergyRegen, round.EnergyMax, round.ID).Error; err != nil {
+			log.Error().Int("round", int(round.ID)).Err(err).Msg("Error updating user energy for round")
+		} else {
+			if err = db.WithContext(ctx).Table("user_rounds").Where("energy > ?", round.EnergyMax).Update("energy", round.EnergyMax).Error; err != nil {
+				log.Error().Int("round", int(round.ID)).Err(err).Msg("Error correcting over the cap energy")
+			} else {
+				log.Info().Msg("ROUND ENERGY UPDATED")
+			}
+		}
+	} else {
+		log.Error().Err(err).Msg("Error retrieving round")
+	}
+
 	db.WithContext(ctx).Unscoped().Where("expires <= ? AND expires <> 0", time.Now()).Delete(&models.UserBuff{})
 	db.WithContext(ctx).Unscoped().Where("quantity = ?", 0).Delete(&models.UserUnit{})
 	db.WithContext(ctx).Unscoped().Where("quantity = ?", 0).Delete(&models.UserBuilding{})
