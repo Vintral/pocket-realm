@@ -324,6 +324,8 @@ func listen(conn *websocket.Conn) {
 			player.PlayRound(ctx)
 		case "RECRUIT":
 			actions.Recruit(ctx)
+		case "REMOVE_CONTACT":
+			social.RemoveContact(ctx)
 		case "ROUND":
 			models.LoadRoundForUser(ctx)
 		case "RULES":
