@@ -272,6 +272,8 @@ func listen(conn *websocket.Conn) {
 		}
 
 		switch payload.Type {
+		case "ADD_CONTACT":
+			social.AddContact(ctx)
 		case "BUILD":
 			actions.Build(ctx)
 		case "BUY_AUCTION":
@@ -286,22 +288,26 @@ func listen(conn *websocket.Conn) {
 			actions.Explore(ctx)
 		case "GATHER":
 			actions.Gather(ctx)
+		case "GET_CONTACTS":
+			social.GetContacts(ctx)
 		case "GET_CONVERSATIONS":
 			social.GetConversations(ctx)
 		case "GET_EVENTS":
 			player.GetEvents(ctx)
+		case "GET_MERCENARY_MARKET":
+			market.GetMercenaryMarket(ctx)
 		case "GET_MESSAGES":
 			social.GetMessages(ctx)
+		case "GET_PROFILE":
+			social.GetProfile(ctx)
 		case "GET_RANKINGS":
 			rankings.RetrieveRankings(ctx)
 		case "GET_ROUNDS":
 			application.GetRounds(ctx)
-		case "GET_MERCENARY_MARKET":
-			market.GetMercenaryMarket(ctx)
-		case "GET_UNDERGROUND_MARKET":
-			market.GetUndergroundAuctions(ctx)
 		case "GET_TECHNOLOGIES":
 			library.GetTechnologies(ctx)
+		case "GET_UNDERGROUND_MARKET":
+			market.GetUndergroundAuctions(ctx)
 		case "PURCHASE_TECHNOLOGY":
 			library.PurchaseTechnology(ctx)
 		case "MARK_EVENT_SEEN":
@@ -318,6 +324,8 @@ func listen(conn *websocket.Conn) {
 			player.PlayRound(ctx)
 		case "RECRUIT":
 			actions.Recruit(ctx)
+		case "REMOVE_CONTACT":
+			social.RemoveContact(ctx)
 		case "ROUND":
 			models.LoadRoundForUser(ctx)
 		case "RULES":

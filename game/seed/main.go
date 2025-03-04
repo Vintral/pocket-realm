@@ -71,6 +71,7 @@ func main() {
 		item1, item2 := createItems(db)
 		createUsers(db, round, item1, item2)
 		createUserTables(db, round)
+		createContacts(db)
 
 		var user *models.User
 		db.First(&user)
@@ -725,6 +726,24 @@ func createMercenaryMarket(db *gorm.DB, unit *models.RoundUnit, round *models.Ro
 	})
 }
 
+func createContacts(db *gorm.DB) {
+	log.Info().Msg("createContacts")
+
+	db.Create(&models.Contact{
+		ContactID: 2,
+		UserID:    1,
+		Category:  "friend",
+		Note:      "Test note for friend",
+	})
+
+	db.Create(&models.Contact{
+		ContactID: 3,
+		UserID:    1,
+		Category:  "enemy",
+		Note:      "They attacked ME!!",
+	})
+}
+
 func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE user_units")
 	db.Exec("DROP TABLE user_rounds")
@@ -758,6 +777,7 @@ func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE technology_levels")
 	db.Exec("DROP TABLE round_technologies")
 	db.Exec("DROP TABLE user_technologies")
+	db.Exec("DROP TABLE contacts")
 }
 
 func createConversations(db *gorm.DB) {
