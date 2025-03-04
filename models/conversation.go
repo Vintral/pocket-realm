@@ -13,8 +13,9 @@ import (
 )
 
 type ConversationUser struct {
-	Username string `json:"username"`
-	Avatar   string `json:"avatar"`
+	Username string    `json:"username"`
+	Avatar   string    `json:"avatar"`
+	GUID     uuid.UUID `json:"guid"`
 }
 
 type LastMessage struct {
@@ -52,8 +53,8 @@ func (conversation *Conversation) AfterFind(tx *gorm.DB) (err error) {
 	ctx, sp := Tracer.Start(tx.Statement.Context, "after-find")
 	defer sp.End()
 
-	db.WithContext(ctx).Table("users").Select("username", "avatar").Where("id = ?", conversation.User1ID).Scan(&conversation.User1)
-	db.WithContext(ctx).Table("users").Select("username", "avatar").Where("id = ?", conversation.User2ID).Scan(&conversation.User2)
+	db.WithContext(ctx).Table("users").Select("username", "avatar", "guid").Where("id = ?", conversation.User1ID).Scan(&conversation.User1)
+	db.WithContext(ctx).Table("users").Select("username", "avatar", "guid").Where("id = ?", conversation.User2ID).Scan(&conversation.User2)
 
 	return
 }
@@ -114,8 +115,10 @@ func LoadConversations(base context.Context, user *User, page int) []*Conversati
 
 	res := db.WithContext(ctx).
 		Table("conversations").
+		// Select("users.guid").
 		Where("user1_id = ? OR user2_id = ?", user.ID, user.ID).
 		Joins("INNER JOIN ( SELECT messages.conversation FROM messages GROUP BY conversation DESC) AS msg ON msg.conversation = conversations.id ").
+		Joins("INNER JOIN users ON users.id = CASE WHEN user1_id = ? THEN user1_id ELSE user2_id END", user.ID).
 		Limit(20).Offset((page - 1) * perPage).
 		Find(&conversations)
 	if res.Error != nil {
@@ -133,11 +136,15 @@ func LoadConversations(base context.Context, user *User, page int) []*Conversati
 				conversation.Username = conversation.User1.Username
 				conversation.Avatar = conversation.User1.Avatar
 				conversation.LastRead = conversation.User1LastRead
+				conversation.GUID = conversation.User1.GUID
 			} else {
 				conversation.Username = conversation.User2.Username
 				conversation.Avatar = conversation.User2.Avatar
 				conversation.LastRead = conversation.User2LastRead
+				conversation.GUID = conversation.User2.GUID
 			}
+
+			conversation.Dump()
 		}
 	}
 
@@ -147,4 +154,24 @@ func LoadConversations(base context.Context, user *User, page int) []*Conversati
 func (conversation *Conversation) Save(ctx context.Context) error {
 	result := db.WithContext(ctx).Save(&conversation)
 	return result.Error
+}
+
+func (conversation *Conversation) Dump() {
+	log.Warn().Msg(`
+=============================")
+ID: ` + fmt.Sprint(conversation.ID) + `
+GUID: ` + fmt.Sprint(conversation.GUID) + `
+User1.ID: ` + fmt.Sprint(conversation.User1ID) + `
+User1.Username: ` + conversation.User1.Username + `
+User1.Avatar: ` + conversation.User1.Avatar + `
+User2.ID: ` + fmt.Sprint(conversation.User2ID) + `
+User2.Username: ` + conversation.User2.Username + `
+User2.Avatar: ` + conversation.User2.Avatar + `
+Username: ` + conversation.Username + `
+Avatar: ` + conversation.Avatar + `
+LastRead: ` + fmt.Sprint(conversation.LastRead) + `
+UpdatedAt: ` + fmt.Sprint(conversation.UpdatedAt) + `
+LastMessage: ` + conversation.LastMessage.Text + `
+=============================
+	`)
 }
