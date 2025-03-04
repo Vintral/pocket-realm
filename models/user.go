@@ -212,8 +212,8 @@ func (user *User) updateTicks(ctx context.Context) {
 	BaseMetal := 0.0
 	BaseStone := 0.0
 	BaseWood := 0.0
-	BaseBuildPower := 0.0
-	BaseRecruitPower := 0.0
+	BaseBuildPower := 5.0
+	BaseRecruitPower := 5.0
 	BaseDefense := 0.0
 	BaseHousing := 0.0
 
@@ -317,7 +317,7 @@ func (user *User) updateTicks(ctx context.Context) {
 	}
 
 	user.RoundData.TickFood = BaseFood - CostFood
-
+	user.RoundData.TickWood = BaseWood - CostWood
 	user.RoundData.TickGold = BaseGold - CostGold
 	user.RoundData.TickFaith = BaseFaith - CostFaith
 	user.RoundData.TickMana = BaseMana - CostMana
@@ -917,7 +917,7 @@ func (user *User) IsPlayingRound(ctx context.Context, round int) bool {
 func (user *User) Join(ctx context.Context, round *Round, classType string) *User {
 	log.Info().Str("round", round.GUID.String()).Msg("Joining round")
 
-	ctx, span := Tracer.Start(ctx, "user-join")
+	ctx, span := Tracer.Start(ctx, "user.Join")
 	defer span.End()
 
 	data := &UserRound{
@@ -1100,6 +1100,38 @@ func (user *User) AddUnit(baseContext context.Context, unit *Unit, quantity int)
 			UnitGuid: user.Round.MapUnitsById[unit.ID].GUID,
 		}
 		user.Units = append(user.Units, temp)
+	}
+
+	temp.Quantity += float64(quantity)
+	return true
+}
+
+func (user *User) AddBuilding(baseContext context.Context, building *Building, quantity float64) bool {
+	_, span := Tracer.Start(baseContext, "user.AddBuilding")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Int("user", int(user.ID)),
+		attribute.Int("building", int(building.ID)),
+		attribute.Float64("quantity", quantity),
+	)
+
+	found := false
+	var temp *UserBuilding
+	for i := 0; i < len(user.Buildings) && !found; i++ {
+		if user.Buildings[i].BuildingID == building.ID {
+			temp = user.Buildings[i]
+		}
+	}
+
+	if temp == nil {
+		temp = &UserBuilding{
+			UserID:       user.ID,
+			RoundID:      uint(user.RoundID),
+			BuildingID:   building.ID,
+			BuildingGuid: user.Round.MapUnitsById[building.ID].GUID,
+		}
+		user.Buildings = append(user.Buildings, temp)
 	}
 
 	temp.Quantity += float64(quantity)
