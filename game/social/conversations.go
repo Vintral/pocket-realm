@@ -35,22 +35,6 @@ type MessageSentResult struct {
 	Type string `json:"type"`
 }
 
-// type ShoutResult struct {
-// 	Type    string `json:"type"`
-// 	Success bool   `json:"success"`
-// }
-
-// func (shout ShoutDataPayload) MarshalBinary() ([]byte, error) {
-// 	return json.Marshal(shout)
-// }
-
-// func dispatchMessage(shout ShoutDataPayload) {
-// 	if redisClient != nil {
-// 		err := redisClient.Publish(context.Background(), "SHOUT", shout)
-// 		fmt.Println(err)
-// 	}
-// }
-
 func dispatchErrorSendingMessage(ctx context.Context, user *models.User) {
 	user.SendError(models.SendErrorParams{Context: &ctx, Type: "message", Message: "error-sending-message"})
 }
@@ -172,13 +156,6 @@ func GetMessages(base context.Context) {
 func GetConversations(base context.Context) {
 	ctx, span := utils.StartSpan(base, "get-conversations")
 	defer span.End()
-
-	// var payload payloads.ExplorePayload
-	// err := json.Unmarshal(base.Value(utilities.KeyPayload{}).([]byte), &payload)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
 
 	user := base.Value(utils.KeyUser{}).(*models.User)
 	fmt.Println("Get Conversations for:", user.ID)
