@@ -19,6 +19,7 @@ type getContactsResult struct {
 	Type    string           `json:"type"`
 	Friends []models.Contact `json:"friends"`
 	Enemies []models.Contact `json:"enemies"`
+	Blocked []models.Contact `json:"blocked"`
 }
 
 type addContactPayload struct {
@@ -160,19 +161,22 @@ func GetContacts(baseContext context.Context) {
 	if err := json.Unmarshal(baseContext.Value(utils.KeyPayload{}).([]byte), &payload); err == nil {
 		f := make(chan []models.Contact)
 		e := make(chan []models.Contact)
+		b := make(chan []models.Contact)
 
 		wg := new(sync.WaitGroup)
-		wg.Add(2)
+		wg.Add(3)
 		go loadContacts(baseContext, user, "friend", wg, f)
 		go loadContacts(baseContext, user, "enemy", wg, e)
+		go loadContacts(baseContext, user, "blocked", wg, b)
 		wg.Wait()
 
-		friends, enemies := <-f, <-e
+		friends, enemies, blocked := <-f, <-e, <-b
 
 		user.Connection.WriteJSON(getContactsResult{
 			Type:    "GET_CONTACTS",
 			Friends: friends,
 			Enemies: enemies,
+			Blocked: blocked,
 		})
 	} else {
 		log.Warn().Msg("Error getting payload: getContactsPayload")
