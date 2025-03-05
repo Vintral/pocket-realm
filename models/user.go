@@ -1474,6 +1474,16 @@ func GetUserIdForName(ctx context.Context, name string) uint {
 	return user.ID
 }
 
+func GetUserIdForGuid(ctx context.Context, guid uuid.UUID) uint {
+	var userId *uint
+	if err := db.WithContext(ctx).Table("users").Select("id").Where("guid = ?", guid).Scan(&userId).Error; err != nil {
+		log.Warn().Err(err).Str("guid", guid.String()).Msg("GetUserIdForGuid: No user found")
+		return 0
+	}
+
+	return *userId
+}
+
 func LoadUserForRound(userid int, roundid int) *User {
 	log.Debug().
 		Int("userid", userid).

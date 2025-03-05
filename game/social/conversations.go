@@ -13,144 +13,116 @@ import (
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
-	attributes "go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 )
 
-type GetMessagesPayload struct {
+type getMessagesPayload struct {
 	Type         string    `json:"type"`
 	Conversation uuid.UUID `json:"conversation"`
 }
 
-type SendMessagePayload struct {
-	Message string `json:"message"`
-	To      string `json:"to"`
+type sendMessagePayload struct {
+	Message string    `json:"message"`
+	To      uuid.UUID `json:"to"`
 }
 
-type ErrorSendingMessageResult struct {
-	Type string `json:"type"`
+type sendMessageResult struct {
+	Type    string `json:"type"`
+	Success bool   `json:"success"`
 }
 
-type MessageSentResult struct {
-	Type string `json:"type"`
-}
-
-func dispatchErrorSendingMessage(ctx context.Context, user *models.User) {
-	user.SendError(models.SendErrorParams{Context: &ctx, Type: "message", Message: "error-sending-message"})
+type getMessagesResult struct {
+	Type     string            `json:"type"`
+	Messages []*models.Message `json:"messages"`
 }
 
 func SendMessage(base context.Context) {
-	log.Info().Msg("sendMessage")
-
-	ctx, span := utils.StartSpan(base, "send-message")
+	ctx, span := utils.StartSpan(base, "SendMessage")
 	defer span.End()
 
-	var payload SendMessagePayload
-	err := json.Unmarshal(base.Value(utils.KeyPayload{}).([]byte), &payload)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
 	user := base.Value(utils.KeyUser{}).(*models.User)
+	success := false
+	errorMsg := ""
 
-	span.SetAttributes(attribute.String("From", user.Username), attribute.String("To", payload.To))
+	var payload sendMessagePayload
+	if err := json.Unmarshal(base.Value(utils.KeyPayload{}).([]byte), &payload); err == nil {
 
-	span.AddEvent("Getting other user id")
-	if otherId := models.GetUserIdForName(ctx, payload.To); otherId != 0 {
-		span.AddEvent("Getting conversation")
-		if conversation := models.GetConversation(ctx, user.ID, otherId); conversation != nil {
-			log.Trace().Msg("Other User: " + fmt.Sprint(otherId))
-			log.Trace().Msg("Conversation Id: " + fmt.Sprint(conversation.ID))
+		span.SetAttributes(attribute.String("From", user.Username), attribute.String("To", payload.To.String()))
 
-			span.AddEvent("Saving message")
-			message := &models.Message{Conversation: conversation.ID, UserID: user.ID, Text: payload.Message}
-			if err := message.Save(ctx); err == nil {
-				span.AddEvent("Updating conversation")
-				if conversation.User1ID == user.ID {
-					conversation.User1LastRead = time.Now()
-				} else {
-					conversation.User2LastRead = time.Now()
+		span.AddEvent("Getting other user id")
+		if otherId := models.GetUserIdForGuid(ctx, payload.To); otherId != 0 {
+			span.AddEvent("Getting conversation")
+			if conversation := models.GetConversation(ctx, user.ID, otherId); conversation != nil {
+				span.AddEvent("Saving message")
+				if err = db.WithContext(ctx).Save(&models.Message{Conversation: conversation.ID, UserID: user.ID, Text: payload.Message}).Error; err == nil {
+					span.AddEvent("Updating conversation")
+					if conversation.User1ID == user.ID {
+						conversation.User1LastRead = time.Now()
+					} else {
+						conversation.User2LastRead = time.Now()
+					}
+
+					if err := conversation.Save(ctx); err == nil {
+						success = true
+					} else {
+						span.RecordError(err)
+					}
 				}
-
-				if err := conversation.Save(ctx); err != nil {
-					span.SetStatus(codes.Error, "Error updating conversation")
-					span.RecordError(err)
-				}
-
-				span.AddEvent("Sending success")
-				user.Connection.WriteJSON(struct {
-					Type string `json:"type"`
-				}{
-					Type: "MESSAGE_SENT",
-				})
-
-				return
 			} else {
-				span.RecordError(err)
+				errorMsg = "error getting conversation"
 			}
 		} else {
-			span.RecordError(errors.New("Error finding conversation"))
+			errorMsg = "error finding other user"
 		}
 	} else {
-		span.RecordError(errors.New("Error finding other user"))
+		errorMsg = "error parsing SendMessagePayload"
 	}
 
-	span.SetStatus(codes.Error, "Error sending message")
-	span.AddEvent("Sending error")
-	dispatchErrorSendingMessage(ctx, user)
+	if errorMsg != "" {
+		err := errors.New(errorMsg)
+		span.RecordError(err)
+		log.Error().Err(err).Msg("Error: SendMEssage")
+	}
+
+	user.Connection.WriteJSON(sendMessageResult{
+		Type:    "SEND_MESSAGE",
+		Success: success,
+	})
 }
 
 func GetMessages(base context.Context) {
-	_, span := utils.StartSpan(base, "get-messages")
+	ctx, span := utils.StartSpan(base, "social.GetMessages")
 	defer span.End()
 
-	var payload GetMessagesPayload
+	var payload getMessagesPayload
 	err := json.Unmarshal(base.Value(utils.KeyPayload{}).([]byte), &payload)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
+	otherId := models.GetUserIdForGuid(ctx, payload.Conversation)
+	span.SetAttributes(attribute.Int("other_user", int(otherId)))
+
 	user := base.Value(utils.KeyUser{}).(*models.User)
-	fmt.Println("Get Messages for:", payload.Conversation)
+	span.SetAttributes(attribute.Int("user", int(user.ID)))
 
-	span.SetAttributes(attributes.String("conversation", payload.Conversation.String()))
-	span.SetAttributes(attributes.Int("user", int(user.ID)))
+	var conversation *int
+	var messages []*models.Message
 
-	conversation := models.LoadConversation(payload.Conversation)
-	if conversation == nil {
-		fmt.Println("Conversation not found:", payload.Conversation)
-		span.RecordError(errors.New("conversation not found"))
-		span.SetStatus(codes.Error, "conversation-error")
-		return
-	}
-	if conversation.User1ID != user.ID && conversation.User2ID != user.ID {
-		fmt.Println("User not part of conversation:", conversation.ID, ":::", user.ID)
-		span.RecordError(errors.New("user not part of conversation"))
-		span.SetStatus(codes.Error, "conversation-error")
-		return
+	if err := db.WithContext(ctx).Table("conversations").Select("id").Where("( user1_id = ? AND user2_id = ? ) OR ( user1_id = ? AND user2_id = ?)", user.ID, otherId, otherId, user.ID).Scan(&conversation).Error; err == nil && conversation != nil {
+		span.SetAttributes(attribute.Int("conversation", *conversation))
+
+		log.Info().Int("otherUser", int(otherId)).Int("user", int(user.ID)).Int("conversation", *conversation).Msg("Retrieve messages")
+
+		if err := db.Table("messages").Where("conversation = ?", *conversation).Order("id DESC").Limit(50).Find(&messages).Error; err != nil {
+			log.Error().Err(err).Msg("Error retrieving messages")
+		}
 	}
 
-	fmt.Println(conversation)
-	if err := conversation.LoadMessages(); err != nil {
-		fmt.Println("Error loading messages:", payload.Conversation)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "conversation-error")
-		return
-	}
-
-	fmt.Println(conversation)
-	packet := struct {
-		Type         string            `json:"type"`
-		Conversation uuid.UUID         `json:"conversation"`
-		Messages     []*models.Message `json:"messages"`
-	}{
-		Type:         "MESSAGES",
-		Conversation: conversation.GUID,
-		Messages:     conversation.Messages,
-	}
-	user.Connection.WriteJSON(packet)
+	user.Connection.WriteJSON(getMessagesResult{
+		Type:     "MESSAGES",
+		Messages: messages,
+	})
 }
 
 func GetConversations(base context.Context) {

@@ -59,34 +59,26 @@ func (conversation *Conversation) AfterFind(tx *gorm.DB) (err error) {
 	return
 }
 
-func (conversation *Conversation) LoadMessages() (err error) {
-	fmt.Println("conversation:AfterFind")
-
-	res := db.Table("messages").Where("conversation = ?", conversation.ID).Order("id DESC").Limit(50).Find(&conversation.Messages)
-	return res.Error
-}
-
 func GetConversation(base context.Context, user1 uint, user2 uint) *Conversation {
-	log.Info().Uint("user1", user1).Uint("user2", user2).Msg("GetConversationId")
+	ctx, span := Tracer.Start(base, "Convsersation.GetConversation")
+	defer span.End()
 
-	ctx, sp := Tracer.Start(base, "get-conversation")
-	defer sp.End()
-
-	sp.SetAttributes(attribute.Int("user1", int(user1)), attribute.Int("user2", int(user2)))
+	log.Info().Uint("user1", user1).Uint("user2", user2).Msg("GetConversation")
+	span.SetAttributes(attribute.Int("user1", int(user1)), attribute.Int("user2", int(user2)))
 
 	var conversation *Conversation
-	res := db.WithContext(ctx).Table("conversations").Where("(user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)", user1, user2, user2, user1).Scan(&conversation)
-	if res.Error != nil {
+	if err := db.WithContext(ctx).Table("conversations").Where("(user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)", user1, user2, user2, user1).Scan(&conversation).Error; err != nil || conversation == nil {
 		log.Info().Msg("Creating Conversation")
 
 		conversation = &Conversation{User1ID: user1, User2ID: user2}
-		res = db.WithContext(ctx).Save(&conversation)
-		if res.Error != nil {
-			sp.RecordError(res.Error)
-			sp.SetStatus(codes.Error, "Getting conversation for users")
-
+		if err = db.WithContext(ctx).Save(&conversation).Error; err != nil {
+			log.Error().Err(err).Uint("from", user1).Uint("to", user2).Msg("Error creating conversation")
+			span.RecordError(err)
 			return nil
 		}
+	} else {
+		log.Info().Msg("Found conversation?")
+		fmt.Println(conversation)
 	}
 
 	return conversation
