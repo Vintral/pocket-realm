@@ -304,6 +304,8 @@ func listen(conn *websocket.Conn) {
 			rankings.RetrieveRankings(ctx)
 		case "GET_ROUNDS":
 			application.GetRounds(ctx)
+		case "GET_SUPPORT_MESSAGES":
+			social.GetSupportMessages(ctx)
 		case "GET_TECHNOLOGIES":
 			library.GetTechnologies(ctx)
 		case "GET_UNDERGROUND_MARKET":
@@ -316,6 +318,8 @@ func listen(conn *websocket.Conn) {
 			market.GetInfo(ctx)
 		case "MESSAGE":
 			social.SendMessage(ctx)
+		case "MESSAGE_SUPPORT":
+			social.SendSupportMessage(ctx)
 		case "NEWS":
 			application.GetNews(user)
 		case "PING":

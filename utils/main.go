@@ -38,7 +38,12 @@ type StartSpanOpts struct {
 }
 
 func StartSpanWithOpts(ctx context.Context, spanName string, opts *StartSpanOpts) (context.Context, span.Span) {
-	return ctx.Value(KeyTraceProvider{}).(*trace.TracerProvider).Tracer(opts.TracerName).Start(context.Background(), spanName)
+	provider := ctx.Value(KeyTraceProvider{}).(*trace.TracerProvider)
+
+	ctx, span := provider.Tracer(opts.TracerName).Start(ctx, spanName)
+	ctx = context.WithValue(ctx, KeyTraceProvider{}, provider)
+
+	return ctx, span
 }
 
 func StartSpan(ctx context.Context, spanName string) (context.Context, span.Span) {

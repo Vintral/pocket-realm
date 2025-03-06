@@ -11,6 +11,7 @@ import (
 	"time"
 
 	realmRedis "github.com/Vintral/pocket-realm/redis"
+	"github.com/Vintral/pocket-realm/utils"
 	realmUtils "github.com/Vintral/pocket-realm/utils"
 	"github.com/rs/zerolog/log"
 
@@ -1475,6 +1476,11 @@ func GetUserIdForName(ctx context.Context, name string) uint {
 }
 
 func GetUserIdForGuid(ctx context.Context, guid uuid.UUID) uint {
+	ctx, span := utils.StartSpan(ctx, "User.GetUserIdForGuid")
+	defer span.End()
+
+	span.SetAttributes(attribute.String("guid", guid.String()))
+
 	var userId *uint
 	if err := db.WithContext(ctx).Table("users").Select("id").Where("guid = ?", guid).Scan(&userId).Error; err != nil {
 		log.Warn().Err(err).Str("guid", guid.String()).Msg("GetUserIdForGuid: No user found")

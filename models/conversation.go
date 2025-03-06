@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Vintral/pocket-realm/utils"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
@@ -59,26 +60,42 @@ func (conversation *Conversation) AfterFind(tx *gorm.DB) (err error) {
 	return
 }
 
-func GetConversation(base context.Context, user1 uint, user2 uint) *Conversation {
-	ctx, span := Tracer.Start(base, "Convsersation.GetConversation")
+func (conversation *Conversation) GetMessages(ctx context.Context) error {
+	ctx, span := utils.StartSpan(ctx, "conversation.GetMessages")
+	defer span.End()
+
+	if err := db.WithContext(ctx).Table("messages").Where("conversation = ?", conversation.ID).Order("id DESC").Limit(50).Find(&conversation.Messages).Error; err != nil {
+		log.Error().Err(err).Msg("Error retrieving messages")
+		return err
+	}
+
+	return nil
+}
+
+func CreateConversation(ctx context.Context, user1 uint, user2 uint) *Conversation {
+	ctx, span := utils.StartSpan(ctx, "conversation.createConversation")
+	defer span.End()
+
+	conversation := Conversation{User1ID: user1, User2ID: user2}
+	if err := db.WithContext(ctx).Save(&conversation).Error; err != nil {
+		log.Error().Err(err).Uint("from", user1).Uint("to", user2).Msg("Error creating conversation")
+		span.RecordError(err)
+		return nil
+	}
+
+	return &conversation
+}
+
+func GetConversation(ctx context.Context, user1 uint, user2 uint) *Conversation {
+	ctx, span := utils.StartSpan(ctx, "Conversation.GetConversation")
 	defer span.End()
 
 	log.Info().Uint("user1", user1).Uint("user2", user2).Msg("GetConversation")
 	span.SetAttributes(attribute.Int("user1", int(user1)), attribute.Int("user2", int(user2)))
 
 	var conversation *Conversation
-	if err := db.WithContext(ctx).Table("conversations").Where("(user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)", user1, user2, user2, user1).Scan(&conversation).Error; err != nil || conversation == nil {
-		log.Info().Msg("Creating Conversation")
-
-		conversation = &Conversation{User1ID: user1, User2ID: user2}
-		if err = db.WithContext(ctx).Save(&conversation).Error; err != nil {
-			log.Error().Err(err).Uint("from", user1).Uint("to", user2).Msg("Error creating conversation")
-			span.RecordError(err)
-			return nil
-		}
-	} else {
-		log.Info().Msg("Found conversation?")
-		fmt.Println(conversation)
+	if err := db.WithContext(ctx).Table("conversations").Where("(user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)", user1, user2, user2, user1).Scan(&conversation).Error; err != nil {
+		log.Error().Err(err).Msg("Error finding conversation")
 	}
 
 	return conversation
@@ -97,18 +114,17 @@ func LoadConversation(guid uuid.UUID) *Conversation {
 }
 
 func LoadConversations(base context.Context, user *User, page int) []*Conversation {
-	log.Trace().Msg("LoadConversations")
-
 	ctx, span := Tracer.Start(base, "load-conversations")
 	defer span.End()
+
+	log.Trace().Msg("LoadConversations")
 
 	perPage := 20
 	var conversations []*Conversation
 
 	res := db.WithContext(ctx).
 		Table("conversations").
-		// Select("users.guid").
-		Where("user1_id = ? OR user2_id = ?", user.ID, user.ID).
+		Where("(user1_id = ? AND user2_id <> ? ) OR ( user1_id <> ? AND user2_id = ?)", user.ID, 0, 0, user.ID).
 		Joins("INNER JOIN ( SELECT messages.conversation FROM messages GROUP BY conversation DESC) AS msg ON msg.conversation = conversations.id ").
 		Joins("INNER JOIN users ON users.id = CASE WHEN user1_id = ? THEN user1_id ELSE user2_id END", user.ID).
 		Limit(20).Offset((page - 1) * perPage).
