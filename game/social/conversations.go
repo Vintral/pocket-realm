@@ -127,8 +127,6 @@ func GetMessages(base context.Context) {
 	ctx, span := utils.StartSpan(base, "social.GetMessages")
 	defer span.End()
 
-	log.Info().Msg("WAT")
-
 	span.AddEvent("Grabbing user")
 	user := base.Value(utils.KeyUser{}).(*models.User)
 	span.SetAttributes(attribute.Int("user", int(user.ID)))
@@ -204,7 +202,7 @@ func GetSupportMessages(baseContext context.Context) {
 }
 
 func GetConversations(base context.Context) {
-	ctx, span := utils.StartSpan(base, "get-conversations")
+	ctx, span := utils.StartSpan(base, "social.GetConversations")
 	defer span.End()
 
 	user := base.Value(utils.KeyUser{}).(*models.User)

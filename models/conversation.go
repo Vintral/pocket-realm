@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 	"gorm.io/gorm"
 )
 
@@ -28,19 +27,18 @@ type LastMessage struct {
 type Conversation struct {
 	BaseModel
 
-	GUID          uuid.UUID        `gorm:"uniqueIndex,size:36" json:"guid"`
-	User1ID       uint             `json:"-"`
-	User1LastRead time.Time        `gorm:"default:1970-01-01" json:"-"`
-	User1         ConversationUser `gorm:"-" json:"-"`
-	User2ID       uint             `json:"-"`
-	User2LastRead time.Time        `gorm:"default:1970-01-01" json:"-"`
-	User2         ConversationUser `gorm:"-" json:"-"`
-	Username      string           `gorm:"-" json:"username"`
-	Avatar        string           `gorm:"-" json:"avatar"`
-	LastRead      time.Time        `gorm:"-" json:"last_read"`
-	UpdatedAt     time.Time        `json:"updated"`
-	Messages      []*Message       `gorm:"-" json:"messages"`
-	LastMessage   LastMessage      `gorm:"-" json:"last_message"`
+	GUID          uuid.UUID  `gorm:"uniqueIndex,size:36" json:"guid"`
+	User1ID       uint       `json:"-"`
+	User1LastRead time.Time  `gorm:"default:1970-01-01" json:"-"`
+	User2ID       uint       `json:"-"`
+	User2LastRead time.Time  `gorm:"default:1970-01-01" json:"-"`
+	Username      string     `gorm:"->;-:migration" json:"username"`
+	Avatar        string     `gorm:"->;-:migration" json:"avatar"`
+	LastRead      time.Time  `gorm:"->;-:migration" json:"last_read"`
+	UpdatedAt     time.Time  `json:"updated"`
+	Replied       bool       `gorm:"->;-:migration" json:"replied"`
+	Message       string     `gorm:"->;-:migration" json:"message"`
+	Messages      []*Message `gorm:"-" json:"-"`
 }
 
 func (conversation *Conversation) BeforeCreate(tx *gorm.DB) (err error) {
@@ -48,23 +46,17 @@ func (conversation *Conversation) BeforeCreate(tx *gorm.DB) (err error) {
 	return
 }
 
-func (conversation *Conversation) AfterFind(tx *gorm.DB) (err error) {
-	fmt.Println("conversation:AfterFind")
-
-	ctx, sp := Tracer.Start(tx.Statement.Context, "after-find")
-	defer sp.End()
-
-	db.WithContext(ctx).Table("users").Select("username", "avatar", "guid").Where("id = ?", conversation.User1ID).Scan(&conversation.User1)
-	db.WithContext(ctx).Table("users").Select("username", "avatar", "guid").Where("id = ?", conversation.User2ID).Scan(&conversation.User2)
-
-	return
-}
-
 func (conversation *Conversation) GetMessages(ctx context.Context) error {
 	ctx, span := utils.StartSpan(ctx, "conversation.GetMessages")
 	defer span.End()
 
-	if err := db.WithContext(ctx).Table("messages").Where("conversation = ?", conversation.ID).Order("id DESC").Limit(50).Find(&conversation.Messages).Error; err != nil {
+	if err := db.WithContext(ctx).
+		Table("messages").
+		Select("username", "avatar", "user_id", "text", "messages.created_at").
+		Joins("INNER JOIN users ON users.id = messages.user_id").
+		Where("conversation = ?", conversation.ID).
+		Order("messages.id DESC").Limit(50).
+		Find(&conversation.Messages).Error; err != nil {
 		log.Error().Err(err).Msg("Error retrieving messages")
 		return err
 	}
@@ -114,46 +106,35 @@ func LoadConversation(guid uuid.UUID) *Conversation {
 }
 
 func LoadConversations(base context.Context, user *User, page int) []*Conversation {
-	ctx, span := Tracer.Start(base, "load-conversations")
+	ctx, span := Tracer.Start(base, "conversation.LoadConversations")
 	defer span.End()
 
 	log.Trace().Msg("LoadConversations")
 
 	perPage := 20
 	var conversations []*Conversation
-
-	res := db.WithContext(ctx).
-		Table("conversations").
-		Where("(user1_id = ? AND user2_id <> ? ) OR ( user1_id <> ? AND user2_id = ?)", user.ID, 0, 0, user.ID).
-		Joins("INNER JOIN ( SELECT messages.conversation FROM messages GROUP BY conversation DESC) AS msg ON msg.conversation = conversations.id ").
-		Joins("INNER JOIN users ON users.id = CASE WHEN user1_id = ? THEN user1_id ELSE user2_id END", user.ID).
-		Limit(20).Offset((page - 1) * perPage).
-		Find(&conversations)
-	if res.Error != nil {
-		span.SetStatus(codes.Error, "loading-conversation-error")
-		span.RecordError(res.Error)
-	} else {
-		span.SetStatus(codes.Ok, "processed")
-
-		for _, conversation := range conversations {
-			db.WithContext(ctx).Table("messages").Where("conversation = ?", conversation.ID).Order("ID desc").Limit(1).Scan(&conversation.LastMessage)
-
-			conversation.LastMessage.Reply = user.ID == conversation.LastMessage.UserID
-
-			if conversation.User2ID == user.ID {
-				conversation.Username = conversation.User1.Username
-				conversation.Avatar = conversation.User1.Avatar
-				conversation.LastRead = conversation.User1LastRead
-				conversation.GUID = conversation.User1.GUID
-			} else {
-				conversation.Username = conversation.User2.Username
-				conversation.Avatar = conversation.User2.Avatar
-				conversation.LastRead = conversation.User2LastRead
-				conversation.GUID = conversation.User2.GUID
-			}
-
-			conversation.Dump()
-		}
+	if err := db.WithContext(ctx).Raw(`
+		SELECT 
+			conversations.id, avatar, username, users.guid, 
+			CASE WHEN ? = user1_id THEN user1_last_read ELSE user2_last_read END AS last_read, 
+			conversations.updated_at, msg.message, 
+			CASE WHEN ? = msg.user_id THEN true ELSE false END as replied 
+		FROM conversations
+		INNER JOIN 
+			( SELECT user_id, text AS message, conversation 
+				FROM messages 
+				INNER JOIN 
+				( SELECT MAX(id) AS max_id 
+					FROM messages 
+					GROUP BY conversation ) AS m 
+				ON m.max_id = messages.id ) AS msg 
+			ON msg.conversation = conversations.id 
+		INNER JOIN users 
+			ON users.id = CASE WHEN user1_id = ? THEN user2_id ELSE user1_id END 
+		WHERE (user1_id = ? AND user2_id <> 0 ) OR ( user1_id <> 0 AND user2_id = ?) 
+		ORDER BY conversations.updated_at DESC LIMIT ?
+	`, user.ID, user.ID, user.ID, user.ID, user.ID, perPage).Scan(&conversations).Error; err != nil {
+		log.Error().Err(err).Uint("user", user.ID).Msg("Error getting conversations")
 	}
 
 	return conversations
@@ -165,21 +146,15 @@ func (conversation *Conversation) Save(ctx context.Context) error {
 }
 
 func (conversation *Conversation) Dump() {
-	log.Warn().Msg(`
+	log.Trace().Msg(`
 =============================")
 ID: ` + fmt.Sprint(conversation.ID) + `
 GUID: ` + fmt.Sprint(conversation.GUID) + `
-User1.ID: ` + fmt.Sprint(conversation.User1ID) + `
-User1.Username: ` + conversation.User1.Username + `
-User1.Avatar: ` + conversation.User1.Avatar + `
-User2.ID: ` + fmt.Sprint(conversation.User2ID) + `
-User2.Username: ` + conversation.User2.Username + `
-User2.Avatar: ` + conversation.User2.Avatar + `
 Username: ` + conversation.Username + `
 Avatar: ` + conversation.Avatar + `
+Message: ` + conversation.Message + `
 LastRead: ` + fmt.Sprint(conversation.LastRead) + `
 UpdatedAt: ` + fmt.Sprint(conversation.UpdatedAt) + `
-LastMessage: ` + conversation.LastMessage.Text + `
 =============================
 	`)
 }
