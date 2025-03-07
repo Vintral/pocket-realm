@@ -11,11 +11,11 @@ import (
 type Message struct {
 	BaseModel
 
-	GUID         uuid.UUID `gorm:"uniqueIndex,size:36" json:"guid"`
+	GUID         uuid.UUID `gorm:"uniqueIndex,size:36" json:"-"`
 	Conversation uint      `json:"-"`
 	UserID       uint      `json:"-"`
-	User         string    `gorm:"->:" json:"username"`
-	Avatar       string    `gorm:"-" json:"avatar"`
+	Username     string    `gorm:"->;-:migration" json:"username"`
+	Avatar       string    `gorm:"->;-:migration" json:"avatar"`
 	Text         string    `json:"message"`
 	CreatedAt    time.Time `json:"time"`
 }
