@@ -20,6 +20,15 @@ import (
 	"gorm.io/gorm"
 )
 
+type BuffInfo struct {
+	Name     string
+	Field    string
+	Category string
+	Item     uint
+	Bonus    float64
+	Percent  bool
+}
+
 func main() {
 	setupLogs()
 
@@ -85,6 +94,8 @@ func main() {
 		createResources(db)
 		createBuffs(db, user)
 		createTechnologies(db, user)
+
+		createTemple(db)
 
 		createOverrides(db)
 
@@ -778,6 +789,9 @@ func dropTables(db *gorm.DB) {
 	db.Exec("DROP TABLE round_technologies")
 	db.Exec("DROP TABLE user_technologies")
 	db.Exec("DROP TABLE contacts")
+	db.Exec("DROP TABLE pantheons")
+	db.Exec("DROP TABLE devotions")
+	db.Exec("DROP TABLE user_devotions")
 }
 
 func createConversations(db *gorm.DB) {
@@ -1067,6 +1081,181 @@ func createResources(db *gorm.DB) {
 	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 6, StartWith: 200, CanGather: true, CanMarket: false})
 	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 7, StartWith: 200, CanGather: true, CanMarket: false})
 	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 8, StartWith: 0, CanGather: false, CanMarket: false})
+}
+
+func createDevotionBuff(db *gorm.DB, data BuffInfo) *models.Buff {
+	buff := models.Buff{
+		Name:      data.Name,
+		Field:     data.Field,
+		Bonus:     data.Bonus,
+		Type:      data.Category,
+		Item:      data.Item,
+		MaxStacks: 1,
+		Percent:   data.Percent,
+	}
+	db.Save(&buff)
+
+	return &buff
+}
+
+func createLifePantheon(db *gorm.DB) {
+	pantheon := &models.Pantheon{
+		Category: "Life",
+	}
+	db.Create(pantheon)
+	buff := createDevotionBuff(db, BuffInfo{
+		Name: "+25% Population Growth", Field: "population_growth", Category: "player", Bonus: 25, Percent: true,
+	})
+	db.Create(&models.Devotion{
+		Pantheon:        pantheon.ID,
+		Level:           1,
+		Upkeep:          25,
+		Buff:            buff.ID,
+		BuffDescription: buff.Name,
+	})
+	buff = createDevotionBuff(db, BuffInfo{
+		Name: "+25% Population Growth", Field: "population_growth", Category: "player", Bonus: 25, Percent: true,
+	})
+	db.Create(&models.Devotion{
+		Pantheon:        pantheon.ID,
+		Level:           2,
+		Upkeep:          50,
+		Buff:            buff.ID,
+		BuffDescription: buff.Name,
+	})
+	buff = createDevotionBuff(db, BuffInfo{
+		Name: "+50% Population Growth", Field: "population_growth", Category: "player", Bonus: 50, Percent: true,
+	})
+	db.Create(&models.Devotion{
+		Pantheon:        pantheon.ID,
+		Level:           3,
+		Upkeep:          100,
+		Buff:            buff.ID,
+		BuffDescription: buff.Name,
+	})
+}
+
+func createWarPantheon(db *gorm.DB) {
+	pantheon := models.Pantheon{
+		Category: "War",
+	}
+	db.Create(&pantheon)
+
+	buff := createDevotionBuff(db, BuffInfo{
+		Name: "+5 Attack for Units", Field: "attack", Category: "unit", Bonus: 5,
+	})
+	db.Create(&models.Devotion{
+		Pantheon:        pantheon.ID,
+		Level:           1,
+		Upkeep:          25,
+		Buff:            buff.ID,
+		BuffDescription: buff.Name,
+	})
+	buff = createDevotionBuff(db, BuffInfo{
+		Name: "+5 Defense for Units", Field: "defense", Category: "unit", Bonus: 5,
+	})
+	db.Create(&models.Devotion{
+		Pantheon:        pantheon.ID,
+		Level:           2,
+		Upkeep:          50,
+		Buff:            buff.ID,
+		BuffDescription: buff.Name,
+	})
+	buff = createDevotionBuff(db, BuffInfo{
+		Name: "+5 Health for Units", Field: "health", Category: "unit", Bonus: 5,
+	})
+	db.Create(&models.Devotion{
+		Pantheon:        pantheon.ID,
+		Level:           3,
+		Upkeep:          100,
+		Buff:            buff.ID,
+		BuffDescription: buff.Name,
+	})
+}
+
+func createDeathPantheon(db *gorm.DB) {
+	pantheon := models.Pantheon{
+		Category: "Death",
+	}
+	db.Create(&pantheon)
+
+	buff := createDevotionBuff(db, BuffInfo{
+		Name: "-25% Population Growth", Field: "population_growth", Category: "player", Bonus: -25, Percent: true,
+	})
+	db.Create(&models.Devotion{
+		Pantheon:        pantheon.ID,
+		Level:           1,
+		Upkeep:          25,
+		Buff:            buff.ID,
+		BuffDescription: buff.Name,
+	})
+	buff = createDevotionBuff(db, BuffInfo{
+		Name: "-25% Population Growth", Field: "population_growth", Category: "player", Bonus: -25, Percent: true,
+	})
+	db.Create(&models.Devotion{
+		Pantheon:        pantheon.ID,
+		Level:           2,
+		Upkeep:          50,
+		Buff:            buff.ID,
+		BuffDescription: buff.Name,
+	})
+	buff = createDevotionBuff(db, BuffInfo{
+		Name: "-50% Population Growth", Field: "population_growth", Category: "player", Bonus: -50, Percent: true,
+	})
+	db.Create(&models.Devotion{
+		Pantheon:        pantheon.ID,
+		Level:           3,
+		Upkeep:          100,
+		Buff:            buff.ID,
+		BuffDescription: buff.Name,
+	})
+}
+
+func createEmpirePantheon(db *gorm.DB) {
+	pantheon := models.Pantheon{
+		Category: "Empire",
+	}
+	db.Create(&pantheon)
+
+	buff := createDevotionBuff(db, BuffInfo{
+		Name: "+5 Build Power", Field: "build_power", Category: "player", Bonus: 5,
+	})
+	db.Create(&models.Devotion{
+		Pantheon:        pantheon.ID,
+		Level:           1,
+		Upkeep:          25,
+		Buff:            buff.ID,
+		BuffDescription: buff.Name,
+	})
+	buff = createDevotionBuff(db, BuffInfo{
+		Name: "+50% Land Found Exploring", Field: "exploring_land_gain", Category: "player", Bonus: 50, Percent: true,
+	})
+	db.Create(&models.Devotion{
+		Pantheon:        pantheon.ID,
+		Level:           2,
+		Upkeep:          50,
+		Buff:            buff.ID,
+		BuffDescription: buff.Name,
+	})
+	buff = createDevotionBuff(db, BuffInfo{
+		Name: "+50% Gathering Returns", Field: "gathering_returns", Category: "player", Bonus: 50, Percent: true,
+	})
+	db.Create(&models.Devotion{
+		Pantheon:        pantheon.ID,
+		Level:           3,
+		Upkeep:          100,
+		Buff:            buff.ID,
+		BuffDescription: buff.Name,
+	})
+}
+
+func createTemple(db *gorm.DB) {
+	log.Info().Msg("Creating Temple")
+
+	createLifePantheon(db)
+	createWarPantheon(db)
+	createDeathPantheon(db)
+	createEmpirePantheon(db)
 }
 
 func createUnits(db *gorm.DB) *models.RoundUnit {
