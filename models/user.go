@@ -194,10 +194,14 @@ func (user *User) updateTickField(field string, val float64) {
 }
 
 func (user *User) updateTicks(ctx context.Context) {
+	ctx, span := utils.StartSpan(ctx, "User.updateTicks")
+	defer span.End()
+
 	// user.resetTicks()
 
 	//log.Warn().Msg("Population: " + fmt.Sprint(user.RoundData.Population))
 
+	span.AddEvent("Reseting values")
 	CostFaith := 0.0
 	CostFood := 0.0
 	CostGold := 0.0
@@ -218,6 +222,7 @@ func (user *User) updateTicks(ctx context.Context) {
 	BaseDefense := 0.0
 	BaseHousing := 0.0
 
+	span.AddEvent("Handling units")
 	for _, unit := range user.Units {
 		baseUnit := user.Round.MapUnitsById[unit.UnitID]
 		quantity := math.Floor(unit.Quantity)
@@ -233,6 +238,7 @@ func (user *User) updateTicks(ctx context.Context) {
 		}
 	}
 
+	span.AddEvent("Handling buildings")
 	for _, building := range user.Buildings {
 		baseBuilding := user.Round.MapBuildingsById[building.BuildingID]
 		quantity := math.Floor(building.Quantity)
@@ -274,8 +280,10 @@ func (user *User) updateTicks(ctx context.Context) {
 		}
 	}
 
+	span.AddEvent("Handling buffs")
 	for _, userBuff := range user.Buffs {
 		if buff, err := LoadBuffById(ctx, int(userBuff.BuffID)); err == nil {
+			buff.Dump()
 			var field *float64
 
 			fmt.Println("field: " + buff.Field)
@@ -305,6 +313,7 @@ func (user *User) updateTicks(ctx context.Context) {
 				field = &BaseHousing
 			default:
 				log.Warn().Msg("Unexpected buff field")
+				continue
 			}
 
 			if buff.Percent {
@@ -317,6 +326,25 @@ func (user *User) updateTicks(ctx context.Context) {
 		}
 	}
 
+	span.AddEvent("Handling devotion")
+	var devotion *Devotion
+	if err := db.WithContext(ctx).
+		Joins("INNER JOIN user_devotions ON ( user_devotions.pantheon = devotions.id AND user_devotions.level = devotions.level )").
+		Where("user_id = ? AND round_id = ?", user.ID, user.RoundID).
+		Find(&devotion).Error; err == nil && devotion != nil {
+
+		log.Info().Msg("FOUND DEVOTION TO UPDATE FAITH TICK")
+		devotion.Dump()
+		CostFaith += float64(devotion.Upkeep)
+	} else {
+		if err != nil {
+			log.Error().Err(err).Msg("Error retrieving devotion in user.updateTicks")
+		} else if devotion == nil {
+			log.Error().Msg("Missing devotion")
+		}
+	}
+
+	span.AddEvent("Collated values")
 	user.RoundData.TickFood = BaseFood - CostFood
 	user.RoundData.TickWood = BaseWood - CostWood
 	user.RoundData.TickGold = BaseGold - CostGold
@@ -1463,6 +1491,10 @@ func (user *User) SellResource(baseContext context.Context, quantity uint, resou
 
 	log.Warn().Msg("Failed to load round")
 	return false
+}
+
+func (user *User) Save(ctx context.Context) error {
+	return db.WithContext(ctx).Save(user).Error
 }
 
 func GetUserIdForName(ctx context.Context, name string) uint {
