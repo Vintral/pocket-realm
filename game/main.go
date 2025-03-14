@@ -20,10 +20,12 @@ import (
 	"github.com/Vintral/pocket-realm/game/player"
 	"github.com/Vintral/pocket-realm/game/rankings"
 	"github.com/Vintral/pocket-realm/game/social"
+	"github.com/Vintral/pocket-realm/game/temple"
 	"github.com/Vintral/pocket-realm/models"
 	realmRedis "github.com/Vintral/pocket-realm/redis"
 	"github.com/Vintral/pocket-realm/utils"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -39,6 +41,7 @@ func Testing() {
 	fmt.Println("HEYO")
 }
 
+var db *gorm.DB
 var connectedUsersByRound map[int]map[int]*models.User
 var connectedUsers map[int]*models.User
 
@@ -177,7 +180,7 @@ func main() {
 	//==============================//
 	//	Run Database migrations			//
 	//==============================//
-	db, err := models.Database(false, redisClient)
+	db, err = models.Database(false, redisClient)
 	if err != nil {
 		panic(err)
 	}
@@ -263,6 +266,7 @@ func listen(conn *websocket.Conn) {
 		ctx := context.WithValue(context.Background(), utils.KeyTraceProvider{}, traceProvider)
 		ctx = context.WithValue(ctx, utils.KeyUser{}, user)
 		ctx = context.WithValue(ctx, utils.KeyPayload{}, messageContent)
+		ctx = context.WithValue(ctx, utils.KeyDB{}, db)
 
 		var payload payloads.Payload
 		err = json.Unmarshal(messageContent, &payload)
@@ -298,6 +302,8 @@ func listen(conn *websocket.Conn) {
 			market.GetMercenaryMarket(ctx)
 		case "GET_MESSAGES":
 			social.GetMessages(ctx)
+		case "GET_PANTHEONS":
+			temple.GetPantheons(ctx)
 		case "GET_PROFILE":
 			social.GetProfile(ctx)
 		case "GET_RANKINGS":
@@ -326,6 +332,10 @@ func listen(conn *websocket.Conn) {
 			conn.WriteMessage(1, []byte("{ \"type\":\"PONG\"}"))
 		case "PLAY_ROUND":
 			player.PlayRound(ctx)
+		case "RAISE_DEVOTION":
+			temple.RaiseDevotion(ctx)
+		case "RENOUNCE_DEVOTION":
+			temple.RenounceDevotion(ctx)
 		case "RECRUIT":
 			actions.Recruit(ctx)
 		case "REMOVE_CONTACT":
