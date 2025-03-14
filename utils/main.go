@@ -12,6 +12,7 @@ import (
 type KeyTraceProvider struct{}
 type KeyUser struct{}
 type KeyPayload struct{}
+type KeyDB struct{}
 
 func GetEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
