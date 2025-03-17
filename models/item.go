@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -15,6 +16,7 @@ type Item struct {
 	ID          uint      `gorm:"primaryKey" json:"order"`
 	GUID        uuid.UUID `gorm:"uniqueIndex,size:36" json:"guid"`
 	Name        string    `json:"name"`
+	EffectList  string    `json:"-"`
 	Effects     []*Effect `gorm:"-" json:"effects"`
 	Plural      string    `json:"plural"`
 	Description string    `json:"description"`
@@ -30,16 +32,19 @@ func (item *Item) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func (item *Item) AfterFind(tx *gorm.DB) (err error) {
-	log.Trace().Msg("item:AfterFind")
-
-	ctx, sp := Tracer.Start(tx.Statement.Context, "after-find")
+	ctx, sp := Tracer.Start(tx.Statement.Context, "item.AfterFind")
 	defer sp.End()
 
-	db.WithContext(ctx).Table("effects").Where("item_id = ?", item.ID).Scan(&item.Effects)
-	for _, effect := range item.Effects {
-		// building.BuildingGuid = user.Round.MapBuildingsById[building.BuildingID].GUID
+	log.Trace().Msg("item.AfterFind")
 
-		log.Info().Uint("id", effect.ID).Uint("amount", effect.Amount).Str("type", effect.Type).Str("name", effect.Name).Msg("Loaded effect")
+	for _, effectId := range strings.Split(item.EffectList, ",") {
+		log.Info().Str("effect", effectId).Msg("Load Effect")
+		var effect *Effect
+		if err := db.WithContext(ctx).Table("effects").Where("id = ?", effectId).Scan(&effect).Error; err != nil {
+			log.Error().Err(err).Str("effect", effectId).Msg("Error loading effect")
+		} else {
+			item.Effects = append(item.Effects, effect)
+		}
 	}
 
 	return
@@ -58,7 +63,7 @@ func (item *Item) Use(baseContext context.Context, user *User) bool {
 
 		switch effect.Type {
 		case "resource":
-			switch effect.Name {
+			switch effect.Field {
 			case "energy":
 				user.RoundData.Energy += int(effect.Amount)
 			case "food":
@@ -68,6 +73,8 @@ func (item *Item) Use(baseContext context.Context, user *User) bool {
 			roundUpdated = true
 		}
 	}
+
+	log.Info().Int("energy", user.RoundData.Energy).Int("food", int(user.RoundData.Food)).Msg("======== > UserInfo")
 
 	if roundUpdated {
 		if !user.UpdateRound(ctx, nil) {
@@ -80,17 +87,21 @@ func (item *Item) Use(baseContext context.Context, user *User) bool {
 }
 
 func GetItemByID(baseContext context.Context, id int) *Item {
-	ctx, span := Tracer.Start(baseContext, "get-item-by-id")
+	ctx, span := Tracer.Start(baseContext, "models.GetItemById")
 	defer span.End()
 
 	log.Info().Msg(fmt.Sprint("GetItemByID: ", id))
 
 	var val *Item
 	if _, ok := itemsById[id]; !ok {
-		db.WithContext(ctx).Table("items").Where("id = ?", id).Scan(&val)
-		if val == nil {
-			log.Warn().Int("id", int(id)).Msg("Failed to load item")
-			return nil
+		log.Info().Int("item", id).Msg("Load Item")
+		if err := db.WithContext(ctx).Table("items").Where("id = ?", id).Find(&val).Error; err == nil {
+			if val == nil {
+				log.Warn().Int("id", int(id)).Msg("Failed to load item")
+				return nil
+			}
+		} else {
+			log.Error().AnErr("err", err).Int("item", id).Msg("Error loading item")
 		}
 
 		log.Info().Int("id", int(id)).Msg("Grabbed item")

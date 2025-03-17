@@ -67,23 +67,25 @@ func main() {
 		dropTables(db)
 		runMigrations(db)
 
+		createEffects(db)
+
 		round, finished := createRounds(db)
 		item1, item2 := createItems(db)
-		createUsers(db, round, item1, item2)
+
 		createUserTables(db, round)
+		createUsers(db, round, item1, item2)
 		createContacts(db)
 
 		var user *models.User
 		db.First(&user)
 		log.Info().Any("user", user).Msg("Loaded User")
-		models.GetUndergroundMarketAuctions(context.Background(), user)
 
 		createRules(db)
 		createNews(db)
 		unit := createUnits(db)
 		createBuildings(db)
 		createResources(db)
-		createBuffs(db, user)
+		createBuffs(db)
 		createTechnologies(db, user)
 
 		createOverrides(db)
@@ -396,37 +398,195 @@ func createTechnologies(db *gorm.DB, user *models.User) {
 	})
 }
 
-func createBuffs(db *gorm.DB, user *models.User) {
-	log.Info().Msg("Creating Buffs")
+func createEffects(db *gorm.DB) {
+	log.Info().Msg("Creating Effects")
 
-	fields := [...]string{"gold", "food", "research", "metal", "wood", "faith", "stone"}
-	maxStacks := 4
-
-	var goldBuff *models.Buff
-	for i, field := range fields {
-		buff :=
-			&models.Buff{
-				Name:      fmt.Sprintf("%s Production Percent Buff", cases.Title(language.English).String(field)),
-				Field:     fmt.Sprintf("%s_tick", field),
-				Bonus:     float64(100 / maxStacks),
-				Type:      "player",
-				MaxStacks: uint(maxStacks),
-				Percent:   true,
-			}
-		db.Create(buff)
-
-		if i == 0 {
-			goldBuff = buff
-		}
+	playerFields := [...]string{"gold", "food", "research", "metal", "wood", "faith", "stone"}
+	for _, field := range playerFields {
+		db.Create(&models.Effect{
+			Type:    "player",
+			Field:   field + "_tick",
+			Amount:  25,
+			Percent: true,
+		})
 	}
 
-	ctx := context.Background()
-	user.AddBuff(ctx, goldBuff)
-	user.AddBuff(ctx, goldBuff)
-	user.AddBuff(ctx, goldBuff)
-	user.AddBuff(ctx, goldBuff)
-	user.AddBuff(ctx, goldBuff)
-	db.WithContext(ctx).Save(&user)
+	db.Create(&models.Effect{
+		Type:    "player",
+		Field:   "population_growth",
+		Amount:  25,
+		Percent: true,
+	})
+	db.Create(&models.Effect{
+		Type:    "player",
+		Field:   "population_growth",
+		Amount:  50,
+		Percent: true,
+	})
+
+	db.Create(&models.Effect{
+		Type:    "player",
+		Field:   "population_growth",
+		Amount:  -25,
+		Percent: true,
+	})
+	db.Create(&models.Effect{
+		Type:    "player",
+		Field:   "population_growth",
+		Amount:  -50,
+		Percent: true,
+	})
+
+	unitFields := [...]string{"attack", "defense", "health"}
+	for _, field := range unitFields {
+		db.Create(&models.Effect{
+			Type:   "unit",
+			Field:  field,
+			Amount: 5,
+		})
+	}
+
+	db.Create(&models.Effect{
+		Type:   "player",
+		Field:  "build_power",
+		Amount: 5,
+	})
+
+	db.Create(&models.Effect{
+		Type:    "player",
+		Field:   "exploring_gain",
+		Amount:  50,
+		Percent: true,
+	})
+
+	db.Create(&models.Effect{
+		Type:    "player",
+		Field:   "gathering_gain",
+		Amount:  25,
+		Percent: true,
+	})
+
+	db.Create(&models.Effect{
+		Type:   "resource",
+		Field:  "energy",
+		Amount: 10,
+	})
+
+	db.Create(&models.Effect{
+		Type:   "resource",
+		Field:  "food",
+		Amount: 50,
+	})
+}
+
+func createBuffs(db *gorm.DB) {
+	log.Info().Msg("Creating Buffs")
+
+	db.Create(&models.Buff{
+		Name:       "Gold Gain",
+		EffectList: "1",
+		MaxStacks:  4,
+	})
+
+	db.Create(&models.Buff{
+		Name:       "Food Gain",
+		EffectList: "2",
+		MaxStacks:  4,
+	})
+
+	db.Create(&models.Buff{
+		Name:       "Research Gain",
+		EffectList: "3",
+		MaxStacks:  4,
+	})
+
+	db.Create(&models.Buff{
+		Name:       "Metal Gain",
+		EffectList: "4",
+		MaxStacks:  4,
+	})
+
+	db.Create(&models.Buff{
+		Name:       "Wood Gain",
+		EffectList: "5",
+		MaxStacks:  4,
+	})
+
+	db.Create(&models.Buff{
+		Name:       "Faith Gain",
+		EffectList: "6",
+		MaxStacks:  4,
+	})
+
+	db.Create(&models.Buff{
+		Name:       "Stone Gain",
+		EffectList: "7",
+		MaxStacks:  4,
+	})
+
+	db.Create(&models.Buff{
+		Name:       "Life Devotion 1",
+		EffectList: "8",
+		MaxStacks:  1,
+	})
+	db.Create(&models.Buff{
+		Name:       "Life Devotion 2",
+		EffectList: "8",
+		MaxStacks:  1,
+	})
+	db.Create(&models.Buff{
+		Name:       "Life Devotion 3",
+		EffectList: "9",
+		MaxStacks:  1,
+	})
+
+	db.Create(&models.Buff{
+		Name:       "War Devotion 1",
+		EffectList: "12",
+		MaxStacks:  1,
+	})
+	db.Create(&models.Buff{
+		Name:       "War Devotion 2",
+		EffectList: "13",
+		MaxStacks:  1,
+	})
+	db.Create(&models.Buff{
+		Name:       "War Devotion 3",
+		EffectList: "14",
+		MaxStacks:  1,
+	})
+
+	db.Create(&models.Buff{
+		Name:       "Death Devotion 1",
+		EffectList: "10",
+		MaxStacks:  1,
+	})
+	db.Create(&models.Buff{
+		Name:       "Death Devotion 2",
+		EffectList: "10",
+		MaxStacks:  1,
+	})
+	db.Create(&models.Buff{
+		Name:       "Death Devotion 3",
+		EffectList: "11",
+		MaxStacks:  1,
+	})
+
+	db.Create(&models.Buff{
+		Name:       "Empire Devotion 1",
+		EffectList: "15",
+		MaxStacks:  1,
+	})
+	db.Create(&models.Buff{
+		Name:       "Empire Devotion 2",
+		EffectList: "16",
+		MaxStacks:  1,
+	})
+	db.Create(&models.Buff{
+		Name:       "Empire Devotion 3",
+		EffectList: "17",
+		MaxStacks:  1,
+	})
 }
 
 func createRounds(db *gorm.DB) (current *models.Round, finished *models.Round) {
@@ -486,10 +646,14 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		RoundPlaying: round.GUID,
 	}
 	db.FirstOrCreate(&user)
-	// user.Join(context.Background(), &round)
+	user = user.Join(context.Background(), &round, "warlock")
 	user.AddItem(ctx, i1)
 	user.AddItem(ctx, i1)
 	user.AddItem(ctx, i2)
+
+	log.Warn().Int("energy", user.RoundData.Energy).Int("food", int(user.RoundData.Food)).Msg("=======> BEFORE")
+	i1.Use(context.Background(), user)
+	log.Warn().Int("energy", user.RoundData.Energy).Int("food", int(user.RoundData.Food)).Msg("=======> AFTER")
 
 	user = &models.User{
 		Email:    "jeffrey.heater0@gmail.com",
@@ -1184,28 +1348,21 @@ func createItems(db *gorm.DB) (item1 *models.Item, item2 *models.Item) {
 	fmt.Println("Seeding Items")
 
 	item1 = &models.Item{
-		Name:   "Small Hourglass",
-		Plural: "Small Hourglasses",
+		Name:       "Small Hourglass",
+		Plural:     "Small Hourglasses",
+		EffectList: "18,19",
 	}
 	db.Create(item1)
-	db.Create(&models.Effect{
-		ItemID: item1.ID,
-		Type:   "resource",
-		Name:   "energy",
-		Amount: 10,
-	})
 
 	item2 = &models.Item{
-		Name:   "Crate of Grain",
-		Plural: "Crates of Grain",
+		Name:       "Crate of Grain",
+		Plural:     "Crates of Grain",
+		EffectList: "19",
 	}
 	db.Create(item2)
-	db.Create(&models.Effect{
-		ItemID: item2.ID,
-		Type:   "resource",
-		Name:   "food",
-		Amount: 50,
-	})
+
+	item1 = models.GetItemByID(db.Statement.Context, 1)
+	item2 = models.GetItemByID(db.Statement.Context, 2)
 
 	return
 }

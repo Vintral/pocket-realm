@@ -3,9 +3,11 @@ package models
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
 )
 
 var buffsById = make(map[int]*Buff)
@@ -13,29 +15,53 @@ var buffsById = make(map[int]*Buff)
 type Buff struct {
 	BaseModel
 
-	ID        uint          `gorm:"primaryKey" json:"order"`
-	Name      string        `json:"name"`
-	Type      string        `json:"type"`
-	Field     string        `json:"field"`
-	Item      uint          `jons:"item"`
-	Bonus     float64       `json:"bonus"`
-	Percent   bool          `json:"percent"`
-	Duration  time.Duration `json:"duration"`
-	MaxStacks uint          `json:"max_stacks"`
+	ID         uint          `gorm:"primaryKey" json:"order"`
+	Name       string        `json:"name"`
+	EffectList string        `json:"-"`
+	Effects    []*Effect     `gorm:"-" json:"effects"`
+	Item       uint          `jons:"item"`
+	Duration   time.Duration `json:"duration"`
+	MaxStacks  uint          `json:"max_stacks"`
+}
+
+func (buff *Buff) AfterFind(tx *gorm.DB) (err error) {
+	log.Trace().Msg("Buff.AfterFind")
+
+	ctx, sp := Tracer.Start(tx.Statement.Context, "Buff.AfterFind")
+	defer sp.End()
+
+	effects := strings.Split(buff.EffectList, ",")
+	var effect *Effect
+	for _, effectId := range effects {
+		tx.WithContext(ctx).Where("id = ?", effectId).Find(&effect)
+		buff.Effects = append(buff.Effects, effect)
+	}
+
+	for _, e := range buff.Effects {
+		e.Dump()
+	}
+
+	return
 }
 
 func (buff *Buff) Dump() {
-	log.Trace().Msg("=============================")
-	log.Trace().Msg("ID:" + fmt.Sprint(buff.ID))
-	log.Trace().Msg("Name:" + buff.Name)
-	log.Trace().Msg("Type: " + buff.Type)
-	log.Trace().Msg("Field: " + buff.Field)
-	log.Trace().Msg("Item: " + fmt.Sprint(buff.Item))
-	log.Trace().Msg("Bonus: " + fmt.Sprint(buff.Bonus))
-	log.Trace().Msg("Percent: " + fmt.Sprint(buff.Percent))
-	log.Trace().Msg("Duration: " + fmt.Sprint(buff.Duration))
-	log.Trace().Msg("Max Stacks: " + fmt.Sprint(buff.MaxStacks))
-	log.Trace().Msg("=============================")
+	effects := ""
+
+	for _, effect := range buff.Effects {
+		effects += fmt.Sprintf("| %d ", effect.ID)
+	}
+	effects += "|"
+
+	log.Trace().Msg(`
+=============================
+ID: ` + fmt.Sprint(buff.ID) + `
+Name: ` + buff.Name + `
+EffectList: ` + buff.EffectList + `
+Effects: ` + effects + `
+Item: ` + fmt.Sprint(buff.Item) + `
+Duration: ` + fmt.Sprint(buff.Duration) + `
+MaxStacks: ` + fmt.Sprint(buff.MaxStacks) + `
+============================`)
 }
 
 func LoadBuffById(baseContext context.Context, buffID int) (*Buff, error) {

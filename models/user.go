@@ -276,41 +276,43 @@ func (user *User) updateTicks(ctx context.Context) {
 
 	for _, userBuff := range user.Buffs {
 		if buff, err := LoadBuffById(ctx, int(userBuff.BuffID)); err == nil {
-			var field *float64
+			buff.Dump()
 
-			fmt.Println("field: " + buff.Field)
+			for _, effect := range buff.Effects {
+				var field *float64
 
-			switch buff.Field {
-			case "build_power":
-				field = &BaseBuildPower
-			case "recruit_power":
-				field = &BaseRecruitPower
-			case "defense":
-				field = &BaseDefense
-			case "food_tick":
-				field = &BaseFood
-			case "wood_tick":
-				field = &BaseWood
-			case "stone_tick":
-				field = &BaseStone
-			case "metal_tick":
-				field = &BaseMetal
-			case "gold_tick":
-				field = &BaseGold
-			case "mana_tick":
-				field = &BaseMana
-			case "faith_tick":
-				field = &BaseFaith
-			case "housing":
-				field = &BaseHousing
-			default:
-				log.Warn().Msg("Unexpected buff field")
-			}
+				switch effect.Field {
+				case "build_power":
+					field = &BaseBuildPower
+				case "recruit_power":
+					field = &BaseRecruitPower
+				case "defense":
+					field = &BaseDefense
+				case "food_tick":
+					field = &BaseFood
+				case "wood_tick":
+					field = &BaseWood
+				case "stone_tick":
+					field = &BaseStone
+				case "metal_tick":
+					field = &BaseMetal
+				case "gold_tick":
+					field = &BaseGold
+				case "mana_tick":
+					field = &BaseMana
+				case "faith_tick":
+					field = &BaseFaith
+				case "housing":
+					field = &BaseHousing
+				default:
+					log.Warn().Msg("Unexpected buff field")
+				}
 
-			if buff.Percent {
-				*field *= (100 + (buff.Bonus * float64(userBuff.Stacks))) / 100.0
-			} else {
-				*field += buff.Bonus * float64(userBuff.Stacks)
+				if effect.Percent {
+					*field *= float64((100 + (effect.Amount * int(userBuff.Stacks))) / 100.0)
+				} else {
+					*field += float64(effect.Amount * int(userBuff.Stacks))
+				}
 			}
 		} else {
 			log.Error().AnErr("err", err).Msg("Buff not found")

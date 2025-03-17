@@ -18,10 +18,11 @@ type UserTechnology struct {
 }
 
 func (tech *UserTechnology) Dump() {
-	log.Warn().Msg("=================================")
-	log.Warn().Msg("UserID: " + fmt.Sprint(tech.UserID))
-	log.Warn().Msg("RoundID: " + fmt.Sprint(tech.RoundID))
-	log.Warn().Msg("TechnologyID: " + fmt.Sprint(tech.TechnologyID))
-	log.Warn().Msg("Level: " + fmt.Sprint(tech.Level))
-	log.Warn().Msg("=================================")
+	log.Warn().Msg(`
+=================================
+UserID: ` + fmt.Sprint(tech.UserID) + `
+RoundID: ` + fmt.Sprint(tech.RoundID) + `
+TechnologyID: ` + fmt.Sprint(tech.TechnologyID) + `
+Level: ` + fmt.Sprint(tech.Level) + `
+=================================`)
 }

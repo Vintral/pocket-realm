@@ -61,7 +61,7 @@ func GetTechnologies(baseContext context.Context) {
 }
 
 func PurchaseTechnology(baseContext context.Context) {
-	ctx, span := utils.StartSpan(baseContext, "purchase-technology")
+	ctx, span := utils.StartSpan(baseContext, "library.PurchaseTechnology")
 	defer span.End()
 
 	user := baseContext.Value(utils.KeyUser{}).(*models.User)
