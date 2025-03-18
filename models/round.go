@@ -121,11 +121,11 @@ func (round *Round) createMarketResource(ctx context.Context, resource *Resource
 }
 
 func (round *Round) loadTechnologies(baseContext context.Context, wg *sync.WaitGroup) {
-	ctx, span := Tracer.Start(baseContext, "load-technologies")
+	ctx, span := Tracer.Start(baseContext, "round.loadTechnologies")
 	defer span.End()
 	defer wg.Done()
 
-	log.Info().Msg("loadTechnologies")
+	log.Info().Msg("round.loadTechnologies")
 
 	db.WithContext(ctx).Raw(`
 		SELECT

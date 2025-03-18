@@ -31,13 +31,11 @@ func GetTechnologies(baseContext context.Context) {
 	ctx, span := utils.StartSpan(baseContext, "library.getTechnologies")
 	defer span.End()
 
-	log.Warn().Msg("GetTechnologies")
+	log.Info().Msg("library.GetTechnologies")
 
 	user := baseContext.Value(utils.KeyUser{}).(*models.User)
-	if round, err := models.LoadRoundByGuid(ctx, user.RoundPlaying); err == nil {
+	if round, err := models.LoadRoundById(ctx, user.RoundID); err == nil {
 		fmt.Println(round.Technologies)
-
-		log.Warn().Int("technology_count", len(round.Technologies)).Msg("Library: Get Technologies")
 
 		techs := make([]*models.Technology, 0)
 
@@ -50,6 +48,10 @@ func GetTechnologies(baseContext context.Context) {
 		}
 		wg.Wait()
 
+		for _, tech := range techs {
+			tech.Dump()
+		}
+
 		user.Connection.WriteJSON(GetTechnologiesResult{
 			Type:         "GET_TECHNOLOGIES",
 			Technologies: techs,
@@ -61,35 +63,36 @@ func GetTechnologies(baseContext context.Context) {
 }
 
 func PurchaseTechnology(baseContext context.Context) {
-	ctx, span := utils.StartSpan(baseContext, "purchase-technology")
+	ctx, span := utils.StartSpan(baseContext, "library.PurchaseTechnology")
 	defer span.End()
 
 	user := baseContext.Value(utils.KeyUser{}).(*models.User)
+	success := false
 
 	var payload PurchaseTechnologyPayload
 	if err := json.Unmarshal(baseContext.Value(utils.KeyPayload{}).([]byte), &payload); err == nil {
-		techId := models.GetTechnologyIdForGuid(ctx, payload.Technology)
+		if techId := models.GetTechnologyIdForGuid(ctx, payload.Technology); techId != 0 {
+			if round, err := models.LoadRoundById(ctx, user.RoundID); err == nil {
+				technology := round.GetTechnologyById(techId)
 
-		if round, err := models.LoadRoundById(ctx, user.RoundID); err == nil {
-			technology := round.GetTechnologyById(techId)
+				tech := &models.Technology{}
+				technology.LoadForUser(ctx, nil, user, tech)
 
-			tech := &models.Technology{}
-			technology.LoadForUser(ctx, nil, user, tech)
-			if user.PurchaseTechnology(ctx, tech) {
-				log.Info().Int("user", int(user.ID)).Int("technology", int(tech.ID)).Int("level", int(tech.Level+1)).Msg("Purchased technology level")
+				if user.PurchaseTechnology(ctx, tech) {
+					log.Info().Int("user", int(user.ID)).Int("technology", int(tech.ID)).Int("level", int(tech.Level+1)).Msg("Purchased technology level")
 
-				user.Refresh()
-				GetTechnologies(baseContext)
-				return
-			} else {
-				log.Warn().Int("user", int(user.ID)).Int("technology", int(tech.ID)).Int("level", int(tech.Level+1)).Msg("Failed to purchase technology level")
+					user.Refresh()
+					GetTechnologies(baseContext)
+					success = true
+				} else {
+					log.Warn().Int("user", int(user.ID)).Int("technology", int(tech.ID)).Int("level", int(tech.Level+1)).Msg("Failed to purchase technology level")
+				}
 			}
 		}
 	}
 
 	user.Connection.WriteJSON(PurchaseTechnologyResult{
 		Type:    "PURCHASE_TECHNOLOGY",
-		Success: false,
-		Message: "purchase-technology-error-1",
+		Success: success,
 	})
 }

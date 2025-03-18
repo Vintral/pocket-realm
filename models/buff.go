@@ -3,9 +3,12 @@ package models
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
 )
 
 var buffsById = make(map[int]*Buff)
@@ -13,29 +16,46 @@ var buffsById = make(map[int]*Buff)
 type Buff struct {
 	BaseModel
 
-	ID        uint          `gorm:"primaryKey" json:"order"`
-	Name      string        `json:"name"`
-	Type      string        `json:"type"`
-	Field     string        `json:"field"`
-	Item      uint          `jons:"item"`
-	Bonus     float64       `json:"bonus"`
-	Percent   bool          `json:"percent"`
-	Duration  time.Duration `json:"duration"`
-	MaxStacks uint          `json:"max_stacks"`
+	ID         uint          `gorm:"primaryKey" json:"order"`
+	Name       string        `json:"name"`
+	EffectList string        `json:"-"`
+	Effects    []*Effect     `gorm:"-" json:"effects"`
+	Item       uint          `jons:"item"`
+	Duration   time.Duration `json:"duration"`
+	MaxStacks  uint          `json:"max_stacks"`
+}
+
+func (buff *Buff) AfterFind(tx *gorm.DB) (err error) {
+	ctx, sp := Tracer.Start(tx.Statement.Context, "Buff.AfterFind")
+	defer sp.End()
+
+	log.Info().Msg("Buff.AfterFind")
+
+	effects := strings.Split(buff.EffectList, ",")
+	for _, effectId := range effects {
+		if id, err := strconv.ParseInt(effectId, 10, 0); err == nil {
+			effect := LoadEffectById(ctx, int(id))
+			buff.Effects = append(buff.Effects, effect)
+		} else {
+			log.Error().Err(err).Msg("Error parsing effectId")
+		}
+	}
+
+	return
 }
 
 func (buff *Buff) Dump() {
-	log.Trace().Msg("=============================")
-	log.Trace().Msg("ID:" + fmt.Sprint(buff.ID))
-	log.Trace().Msg("Name:" + buff.Name)
-	log.Trace().Msg("Type: " + buff.Type)
-	log.Trace().Msg("Field: " + buff.Field)
-	log.Trace().Msg("Item: " + fmt.Sprint(buff.Item))
-	log.Trace().Msg("Bonus: " + fmt.Sprint(buff.Bonus))
-	log.Trace().Msg("Percent: " + fmt.Sprint(buff.Percent))
-	log.Trace().Msg("Duration: " + fmt.Sprint(buff.Duration))
-	log.Trace().Msg("Max Stacks: " + fmt.Sprint(buff.MaxStacks))
-	log.Trace().Msg("=============================")
+
+	log.Trace().Msg(`
+============BUFF=============
+ID: ` + fmt.Sprint(buff.ID) + `
+Name: ` + buff.Name + `
+EffectList: ` + buff.EffectList + `
+LoadedEffects: ` + fmt.Sprint(len(buff.Effects)) + `
+Item: ` + fmt.Sprint(buff.Item) + `
+Duration: ` + fmt.Sprint(buff.Duration) + `
+MaxStacks: ` + fmt.Sprint(buff.MaxStacks) + `
+============================`)
 }
 
 func LoadBuffById(baseContext context.Context, buffID int) (*Buff, error) {
@@ -44,21 +64,16 @@ func LoadBuffById(baseContext context.Context, buffID int) (*Buff, error) {
 		return b, nil
 	}
 
-	ctx, span := Tracer.Start(baseContext, "add-buff")
+	ctx, span := Tracer.Start(baseContext, "models.LoadBuffById")
 	defer span.End()
 
-	log.Info().Int("buff_id", buffID).Msg("Loading Buff")
+	log.Info().Int("buff_id", buffID).Msg("models.LoadByffById")
 
 	var buff Buff
 	if err := db.WithContext(ctx).Where("id = ?", buffID).Find(&buff).Error; err != nil {
 		log.Error().AnErr("err", err).Msg("Error loading buff")
 		return nil, err
 	}
-
-	log.Debug().Any("buff", buff).Send()
-	buff.Dump()
-
-	fmt.Println(buff)
 
 	buffsById[buffID] = &buff
 	return &buff, nil

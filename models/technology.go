@@ -53,9 +53,8 @@ func (technology *Technology) LoadForUser(baseContext context.Context, wg *sync.
 	tech.ID = technology.ID
 	tech.GUID = technology.GUID
 	tech.Name = technology.Name
+	tech.Buff = technology.Buff
 	tech.Description = technology.Description
-
-	log.Warn().Str("description", tech.Description).Msg("LOAD TECHNOLOGY")
 
 	log.Trace().Any("guid", tech.GUID).Msg("LoadForUser")
 
@@ -76,18 +75,23 @@ func (technology *Technology) LoadForUser(baseContext context.Context, wg *sync.
 }
 
 func (technology *Technology) Dump() {
-	log.Warn().Msg("==================================")
-	log.Warn().Msg("ID: " + fmt.Sprint(technology.ID))
-	log.Warn().Msg("Name: " + technology.Name)
-	log.Warn().Msg("Description: " + technology.Description)
-	log.Warn().Msg("Buff: " + fmt.Sprint(technology.Buff))
-	log.Warn().Msg("Available: " + fmt.Sprint(technology.Available))
-	log.Warn().Msg("Player Level: " + fmt.Sprint(technology.Level))
-	log.Warn().Msg("--------------LEVELS--------------")
+	levels := ""
 	for _, level := range technology.Levels {
-		log.Warn().Msg(fmt.Sprint(level.Level) + " -- " + fmt.Sprint(level.Cost))
+		levels += fmt.Sprintf("%d -- %d\n", level.Level, level.Cost)
 	}
-	log.Warn().Msg("==================================")
+
+	log.Trace().Msg(`
+============TECHNOLOGY===========")
+ID: ` + fmt.Sprint(technology.ID) + `
+Name: ` + technology.Name + `
+Description: ` + technology.Description + `
+Buff: ` + fmt.Sprint(technology.Buff) + `
+Available: ` + fmt.Sprint(technology.Available) + `
+Player Level: ` + fmt.Sprint(technology.Level) + `
+--------------LEVELS--------------
+` + levels + `
+==================================
+	`)
 }
 
 func GetTechnologyIdForGuid(baseContext context.Context, tech uuid.UUID) uint {
@@ -97,7 +101,10 @@ func GetTechnologyIdForGuid(baseContext context.Context, tech uuid.UUID) uint {
 	log.Info().Any("guid", tech).Msg("LoadTechnologyByGUID")
 
 	var technology *uint
-	db.WithContext(ctx).Table("round_technologies").Where("guid = ?", tech).Select("technology_id").Scan(&technology)
+	if err := db.WithContext(ctx).Table("round_technologies").Where("guid = ?", tech).Select("technology_id").Scan(&technology).Error; err != nil || technology == nil {
+		log.Error().AnErr("err", err).Str("technology", tech.String()).Msg("Technology not found")
+		return 0
+	}
 
 	return *technology
 }

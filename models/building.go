@@ -222,7 +222,7 @@ func (building *Building) Build(ctx context.Context, user *User, energy uint) (f
 }
 
 func (building *Building) Dump() {
-	log.Warn().Msg(`
+	log.Trace().Msg(`
 =============================")
 ID: ` + fmt.Sprint(building.ID) + `
 GUID: ` + fmt.Sprint(building.GUID) + `

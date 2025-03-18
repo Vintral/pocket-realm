@@ -1,10 +1,52 @@
 package models
 
+import (
+	"context"
+	"fmt"
+
+	"github.com/Vintral/pocket-realm/utils"
+	"github.com/rs/zerolog/log"
+)
+
+var effectsById = make(map[int]*Effect)
+
 type Effect struct {
 	BaseModel
 
-	ItemID uint   `json:"-"`
-	Type   string `json:"type"`
-	Name   string `json:"name"`
-	Amount uint   `json:"amount"`
+	Type    string `json:"type"`
+	Field   string `json:"field"`
+	Amount  int    `json:"amount"`
+	Percent bool   `json:"percent"`
+}
+
+func (effect *Effect) Dump() {
+	log.Warn().Msg(`
+============EFFECT===========
+ID: ` + fmt.Sprint(effect.ID) + `
+Type: ` + effect.Type + `
+Field: ` + effect.Field + `
+Amount: ` + fmt.Sprint(effect.Amount) + `
+Percent: ` + fmt.Sprint(effect.Percent) + `
+=============================`)
+}
+
+func LoadEffectById(ctx context.Context, effectId int) *Effect {
+	ctx, span := utils.StartSpan(ctx, "models.LoadEffectById")
+	defer span.End()
+
+	log.Info().Int("effect", effectId).Msg("models.LoadEffectById")
+
+	if effect, ok := effectsById[effectId]; ok {
+		return effect
+	} else {
+		var effect *Effect
+		if err := db.WithContext(ctx).Where("id = ?", effectId).Find(&effect).Error; err == nil {
+			effectsById[effectId] = effect
+			return effectsById[effectId]
+		} else {
+			log.Error().Err(err).Int("effect", effectId).Msg("Error loading effect")
+		}
+	}
+
+	return nil
 }
