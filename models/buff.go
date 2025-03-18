@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,39 +26,32 @@ type Buff struct {
 }
 
 func (buff *Buff) AfterFind(tx *gorm.DB) (err error) {
-	log.Trace().Msg("Buff.AfterFind")
-
 	ctx, sp := Tracer.Start(tx.Statement.Context, "Buff.AfterFind")
 	defer sp.End()
 
-	effects := strings.Split(buff.EffectList, ",")
-	var effect *Effect
-	for _, effectId := range effects {
-		tx.WithContext(ctx).Where("id = ?", effectId).Find(&effect)
-		buff.Effects = append(buff.Effects, effect)
-	}
+	log.Info().Msg("Buff.AfterFind")
 
-	for _, e := range buff.Effects {
-		e.Dump()
+	effects := strings.Split(buff.EffectList, ",")
+	for _, effectId := range effects {
+		if id, err := strconv.ParseInt(effectId, 10, 0); err == nil {
+			effect := LoadEffectById(ctx, int(id))
+			buff.Effects = append(buff.Effects, effect)
+		} else {
+			log.Error().Err(err).Msg("Error parsing effectId")
+		}
 	}
 
 	return
 }
 
 func (buff *Buff) Dump() {
-	effects := ""
-
-	for _, effect := range buff.Effects {
-		effects += fmt.Sprintf("| %d ", effect.ID)
-	}
-	effects += "|"
 
 	log.Trace().Msg(`
-=============================
+============BUFF=============
 ID: ` + fmt.Sprint(buff.ID) + `
 Name: ` + buff.Name + `
 EffectList: ` + buff.EffectList + `
-Effects: ` + effects + `
+LoadedEffects: ` + fmt.Sprint(len(buff.Effects)) + `
 Item: ` + fmt.Sprint(buff.Item) + `
 Duration: ` + fmt.Sprint(buff.Duration) + `
 MaxStacks: ` + fmt.Sprint(buff.MaxStacks) + `
@@ -70,21 +64,16 @@ func LoadBuffById(baseContext context.Context, buffID int) (*Buff, error) {
 		return b, nil
 	}
 
-	ctx, span := Tracer.Start(baseContext, "add-buff")
+	ctx, span := Tracer.Start(baseContext, "models.LoadBuffById")
 	defer span.End()
 
-	log.Info().Int("buff_id", buffID).Msg("Loading Buff")
+	log.Info().Int("buff_id", buffID).Msg("models.LoadByffById")
 
 	var buff Buff
 	if err := db.WithContext(ctx).Where("id = ?", buffID).Find(&buff).Error; err != nil {
 		log.Error().AnErr("err", err).Msg("Error loading buff")
 		return nil, err
 	}
-
-	log.Debug().Any("buff", buff).Send()
-	buff.Dump()
-
-	fmt.Println(buff)
 
 	buffsById[buffID] = &buff
 	return &buff, nil

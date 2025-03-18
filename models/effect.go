@@ -20,8 +20,8 @@ type Effect struct {
 }
 
 func (effect *Effect) Dump() {
-	log.Info().Msg(`
-=============================
+	log.Warn().Msg(`
+============EFFECT===========
 ID: ` + fmt.Sprint(effect.ID) + `
 Type: ` + effect.Type + `
 Field: ` + effect.Field + `
@@ -39,7 +39,9 @@ func LoadEffectById(ctx context.Context, effectId int) *Effect {
 	if effect, ok := effectsById[effectId]; ok {
 		return effect
 	} else {
-		if err := db.WithContext(ctx).Where("id = ?", effectId).Find(effectsById[effectId]).Error; err == nil {
+		var effect *Effect
+		if err := db.WithContext(ctx).Where("id = ?", effectId).Find(&effect).Error; err == nil {
+			effectsById[effectId] = effect
 			return effectsById[effectId]
 		} else {
 			log.Error().Err(err).Int("effect", effectId).Msg("Error loading effect")

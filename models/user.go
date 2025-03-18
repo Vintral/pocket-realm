@@ -207,16 +207,27 @@ func (user *User) updateTicks(ctx context.Context) {
 	CostWood := 0.0
 
 	BaseFaith := 0.0
+	FaithPercentModifier := 1.0
 	BaseFood := 0.0
+	FoodPercentModifier := 1.0
 	BaseGold := user.RoundData.Population
+	GoldPercentModifier := 1.0
 	BaseMana := 0.0
+	ManaPercentModifier := 1.0
 	BaseMetal := 0.0
+	MetalPercentModifier := 1.0
 	BaseStone := 0.0
+	StonePercentModifier := 1.0
 	BaseWood := 0.0
+	WoodPercentModifier := 1.0
 	BaseBuildPower := 5.0
+	BuildPowerPercentModifier := 1.0
 	BaseRecruitPower := 5.0
+	RecruitPowerPercentModifier := 1.0
 	BaseDefense := 0.0
+	DefensePercentModifier := 1.0
 	BaseHousing := 0.0
+	HousingPercentModifier := 1.0
 
 	for _, unit := range user.Units {
 		baseUnit := user.Round.MapUnitsById[unit.UnitID]
@@ -276,40 +287,50 @@ func (user *User) updateTicks(ctx context.Context) {
 
 	for _, userBuff := range user.Buffs {
 		if buff, err := LoadBuffById(ctx, int(userBuff.BuffID)); err == nil {
-			buff.Dump()
-
 			for _, effect := range buff.Effects {
 				var field *float64
+				var fieldPercent *float64
 
 				switch effect.Field {
 				case "build_power":
 					field = &BaseBuildPower
+					fieldPercent = &BuildPowerPercentModifier
 				case "recruit_power":
 					field = &BaseRecruitPower
+					fieldPercent = &RecruitPowerPercentModifier
 				case "defense":
 					field = &BaseDefense
+					fieldPercent = &DefensePercentModifier
 				case "food_tick":
 					field = &BaseFood
+					fieldPercent = &FoodPercentModifier
 				case "wood_tick":
 					field = &BaseWood
+					fieldPercent = &WoodPercentModifier
 				case "stone_tick":
 					field = &BaseStone
+					fieldPercent = &StonePercentModifier
 				case "metal_tick":
 					field = &BaseMetal
+					fieldPercent = &MetalPercentModifier
 				case "gold_tick":
 					field = &BaseGold
+					fieldPercent = &GoldPercentModifier
 				case "mana_tick":
 					field = &BaseMana
+					fieldPercent = &ManaPercentModifier
 				case "faith_tick":
 					field = &BaseFaith
+					fieldPercent = &FaithPercentModifier
 				case "housing":
 					field = &BaseHousing
+					fieldPercent = &HousingPercentModifier
 				default:
 					log.Warn().Msg("Unexpected buff field")
 				}
 
 				if effect.Percent {
-					*field *= float64((100 + (effect.Amount * int(userBuff.Stacks))) / 100.0)
+					*fieldPercent += float64(effect.Amount*int(userBuff.Stacks)) / 100.0
 				} else {
 					*field += float64(effect.Amount * int(userBuff.Stacks))
 				}
@@ -319,17 +340,17 @@ func (user *User) updateTicks(ctx context.Context) {
 		}
 	}
 
-	user.RoundData.TickFood = BaseFood - CostFood
-	user.RoundData.TickWood = BaseWood - CostWood
-	user.RoundData.TickGold = BaseGold - CostGold
-	user.RoundData.TickFaith = BaseFaith - CostFaith
-	user.RoundData.TickMana = BaseMana - CostMana
-	user.RoundData.TickMetal = BaseMetal - CostMetal
-	user.RoundData.TickStone = BaseStone - CostStone
-	user.RoundData.BuildPower = BaseBuildPower
-	user.RoundData.RecruitPower = BaseRecruitPower
-	user.RoundData.Housing = BaseHousing
-	user.RoundData.Defense = BaseDefense
+	user.RoundData.TickFood = (BaseFood * FoodPercentModifier) - CostFood
+	user.RoundData.TickWood = (BaseWood * WoodPercentModifier) - CostWood
+	user.RoundData.TickGold = (BaseGold * GoldPercentModifier) - CostGold
+	user.RoundData.TickFaith = (BaseFaith * FaithPercentModifier) - CostFaith
+	user.RoundData.TickMana = (BaseMana * ManaPercentModifier) - CostMana
+	user.RoundData.TickMetal = (BaseMetal * MetalPercentModifier) - CostMetal
+	user.RoundData.TickStone = (BaseStone * StonePercentModifier) - CostStone
+	user.RoundData.BuildPower = BaseBuildPower * BuildPowerPercentModifier
+	user.RoundData.RecruitPower = BaseRecruitPower * RecruitPowerPercentModifier
+	user.RoundData.Housing = BaseHousing * HousingPercentModifier
+	user.RoundData.Defense = BaseDefense * DefensePercentModifier
 }
 
 func (user *User) UpdateRank(base context.Context) {
@@ -1142,10 +1163,10 @@ func (user *User) AddBuilding(baseContext context.Context, building *Building, q
 }
 
 func (user *User) AddBuff(baseContext context.Context, buff *Buff) bool {
-	ctx, span := Tracer.Start(baseContext, "add-buff")
+	ctx, span := Tracer.Start(baseContext, "User.AddBuff")
 	defer span.End()
 
-	log.Warn().Int("user", int(user.ID)).Int("buff", int(buff.ID)).Msg("AddBuff")
+	log.Warn().Int("user", int(user.ID)).Int("buff", int(buff.ID)).Msg("User.AddBuff")
 
 	span.SetAttributes(
 		attribute.Int("user", int(user.ID)),
@@ -1322,6 +1343,14 @@ func (user *User) PurchaseTechnology(baseContext context.Context, technology *Te
 
 		if user.RoundData.Research > float64(technology.Cost) {
 			user.RoundData.Research -= float64(technology.Cost)
+
+			if buff, err := LoadBuffById(ctx, int(technology.Buff)); err == nil && buff != nil {
+				buff.Dump()
+				user.AddBuff(ctx, buff)
+			} else {
+				log.Error().Msg("Buff not found")
+				return errors.New("buff not found")
+			}
 
 			if err := tx.WithContext(ctx).Save(&user).Error; err != nil {
 				return err
