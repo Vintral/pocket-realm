@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Vintral/pocket-realm/models"
+	"github.com/Vintral/pocket-realm/utils"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -26,6 +27,7 @@ import (
 
 var db *gorm.DB
 var tracer tracerDefinition.Tracer
+var tp *trace.TracerProvider
 var redisClient *redisDef.Client
 
 func buildTickField(field string) string {
@@ -51,6 +53,9 @@ func getBankruptQuery(field string) string {
 }
 
 func dealWithBankruptUser(ctx context.Context, field string, roundid uint, userid int) {
+	ctx, span := utils.StartCronSpan(ctx, "dealWithBankruptUser")
+	defer span.End()
+
 	user := models.LoadUserForRound(userid, int(roundid))
 
 	if ok := user.ProcessBankruptcy(ctx, field); !ok {
@@ -63,10 +68,12 @@ func handleBankruptcies(baseContext context.Context, roundid uint, field string)
 	sb.WriteString("handle-bankruptcies-")
 	sb.WriteString(field)
 
-	ctx, span := tracer.Start(baseContext, sb.String())
+	ctx, span := utils.StartCronSpan(baseContext, sb.String())
 	defer span.End()
 
-	log.Debug().Msg(getBankruptQuery(field))
+	log.Warn().Msg("=====================================")
+	log.Warn().Msg(getBankruptQuery(field))
+	log.Warn().Msg("=====================================")
 
 	var userIDs []int
 	db.WithContext(ctx).Model(&models.UserRound{}).Where(getBankruptQuery(field), roundid).Select("user_id").Scan(&userIDs)
@@ -90,7 +97,8 @@ func handleBankruptcies(baseContext context.Context, roundid uint, field string)
 func processField(baseContext context.Context, roundid uint, field string, wg *sync.WaitGroup) {
 	log.Warn().Msg("processField: " + field)
 
-	ctx, span := tracer.Start(baseContext, "process-field-"+field)
+	// ctx, span := tracer.Start(baseContext, "process-field-"+field)
+	ctx, span := utils.StartCronSpan(baseContext, "process-field-"+field)
 	defer span.End()
 	if wg != nil {
 		defer wg.Done()
@@ -98,17 +106,18 @@ func processField(baseContext context.Context, roundid uint, field string, wg *s
 
 	tickField := buildTickField(field)
 
+	handleBankruptcies(ctx, roundid, field)
+
 	var query strings.Builder
 	query.WriteString("round_id = ? AND (")
 	query.WriteString("(" + tickField + " >= 0)")
 	query.WriteString(" OR ")
-	query.WriteString("(" + field + " >= -" + tickField + ")")
+	query.WriteString("(" + field + " >= " + tickField + ")")
 	query.WriteString(")")
+
 
 	res := db.WithContext(ctx).Model(&models.UserRound{}).Where(query.String(), roundid).Update(field, gorm.Expr(field+" + "+tickField))
 	log.Trace().Msg("Rows Affected: " + fmt.Sprint(res.RowsAffected))
-
-	handleBankruptcies(ctx, roundid, field)
 }
 
 func growPopulations(baseContext context.Context, roundid uint) {
@@ -127,14 +136,15 @@ func growPopulations(baseContext context.Context, roundid uint) {
 func processRound(baseContext context.Context, roundid uint, waitgroup *sync.WaitGroup) {
 	label := "process-round-" + fmt.Sprint(roundid)
 
-	ctx, span := tracer.Start(baseContext, label)
+	// ctx, span := tracer.Start(baseContext, label)
+	ctx, span := utils.StartCronSpan(baseContext, label)
 	defer span.End()
 	defer waitgroup.Done()
 	defer log.Warn().Msg("Done processRound")
 
 	log.Info().Uint("roundid", roundid).Msg("processRound: " + fmt.Sprint(roundid))
 
-	fields := [...]string{"gold", "food", "wood", "metal", "stone", "mana", "faith", "research"}
+	fields := [...]string{"gold", "food", "wood", "metal", "stone", "mana", "faith"}
 
 	growPopulations(ctx, roundid)
 
@@ -184,6 +194,8 @@ func process() {
 
 	ctx, span := tracer.Start(context.Background(), "process")
 	defer span.End()
+
+	ctx = context.WithValue(ctx, utils.KeyTraceProvider{}, tp)
 
 	if time.Now().Hour() == 0 && time.Now().Minute() == 0 {
 		fmt.Println("Reseting active rounds")
@@ -258,7 +270,7 @@ func main() {
 	//	Setup Telemetry							//
 	//==============================//
 	log.Info().Msg("Setting up telemetry")
-	otelShutdown, tp, err := setupOTelSDK(context.Background())
+	otelShutdown, provider, err := setupOTelSDK(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -270,6 +282,7 @@ func main() {
 	}()
 
 	log.Info().Msg("Setting Trace Provider")
+	tp = provider
 	if tp == nil {
 		panic("Trace Provider is nil")
 	}
@@ -301,8 +314,10 @@ func main() {
 		scheduler.Start()
 	}
 
-	for {
-		time.Sleep(60 * time.Second)
-		log.Trace().Msg("Tick")
-	}
+	process()
+
+	// for {
+	// 	time.Sleep(60 * time.Second)
+	// 	log.Trace().Msg("Tick")
+	// }
 }

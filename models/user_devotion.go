@@ -12,13 +12,13 @@ type UserDevotion struct {
 	UserID       uint   `json:"-"`
 	RoundID      uint   `json:"-"`
 	Pantheon     uint   `json:"-"`
-	PantheonName string `gorm:"-:migration" json:"pantheon"`
+	PantheonName string `gorm:"->;-:migration" json:"pantheon"`
 	Level        uint   `json:"level"`
 }
 
 func (devotion *UserDevotion) Dump() {
 	log.Info().Msg(`
-=============================
+========USER_DEVOTION========
 ID: ` + fmt.Sprint(devotion.ID) + `
 UserID: ` + fmt.Sprint(devotion.UserID) + `
 RoundID: ` + fmt.Sprint(devotion.RoundID) + `

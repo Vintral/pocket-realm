@@ -98,7 +98,7 @@ func (user *User) AfterFind(tx *gorm.DB) (err error) {
 }
 
 func (user *User) AfterUpdate(tx *gorm.DB) (err error) {
-	ctx, sp := Tracer.Start(tx.Statement.Context, "after-update")
+	ctx, sp := utils.StartSpan(tx.Statement.Context, "after-update")
 	defer sp.End()
 
 	wg := new(sync.WaitGroup)
@@ -133,7 +133,7 @@ func (user *User) updateUnits(ctx context.Context, wg *sync.WaitGroup) bool {
 }
 
 func (user *User) updateBuffs(ctx context.Context, wg *sync.WaitGroup) bool {
-	ctx, span := Tracer.Start(ctx, "user-update-buffs")
+	ctx, span := Tracer.Start(ctx, "user.updateBuffs")
 	defer span.End()
 	if wg != nil {
 		defer wg.Done()
@@ -193,6 +193,16 @@ func (user *User) updateTickField(field string, val float64) {
 	}
 }
 
+type Costs struct {
+	Faith float64
+	Food  float64
+	Gold  float64
+	Mana  float64
+	Metal float64
+	Stone float64
+	Wood  float64
+}
+
 func (user *User) updateTicks(ctx context.Context) {
 	ctx, span := utils.StartSpan(ctx, "User.updateTicks")
 	defer span.End()
@@ -202,13 +212,7 @@ func (user *User) updateTicks(ctx context.Context) {
 	//log.Warn().Msg("Population: " + fmt.Sprint(user.RoundData.Population))
 
 	span.AddEvent("Reseting values")
-	CostFaith := 0.0
-	CostFood := 0.0
-	CostGold := 0.0
-	CostMana := 0.0
-	CostMetal := 0.0
-	CostStone := 0.0
-	CostWood := 0.0
+	costs := Costs{}
 
 	BaseFaith := 0.0
 	FaithPercentModifier := 1.0
@@ -234,20 +238,7 @@ func (user *User) updateTicks(ctx context.Context) {
 	HousingPercentModifier := 1.0
 
 	span.AddEvent("Handling units")
-	for _, unit := range user.Units {
-		baseUnit := user.Round.MapUnitsById[unit.UnitID]
-		quantity := math.Floor(unit.Quantity)
-
-		if quantity > 0 {
-			CostFaith -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepFaith), 2)
-			CostFood -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepFood), 2)
-			CostGold -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepGold), 2)
-			CostMana -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepMana), 2)
-			CostMetal -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepMetal), 2)
-			CostStone -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepStone), 2)
-			CostWood -= realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepWood), 2)
-		}
-	}
+	costs = user.getUnitCosts(costs)
 
 	span.AddEvent("Handling buildings")
 	for _, building := range user.Buildings {
@@ -281,13 +272,13 @@ func (user *User) updateTicks(ctx context.Context) {
 				BaseHousing += val
 			}
 
-			CostFaith -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepFaith), 2)
-			CostFood -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepFood), 2)
-			CostGold -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepGold), 2)
-			CostMana -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepMana), 2)
-			CostMetal -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepMetal), 2)
-			CostStone -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepStone), 2)
-			CostWood -= realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepWood), 2)
+			costs.Faith += realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepFaith), 2)
+			costs.Food += realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepFood), 2)
+			costs.Gold += realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepGold), 2)
+			costs.Mana += realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepMana), 2)
+			costs.Metal += realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepMetal), 2)
+			costs.Stone += realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepStone), 2)
+			costs.Wood += realmUtils.RoundFloat(quantity*float64(baseBuilding.UpkeepWood), 2)
 		}
 	}
 
@@ -333,7 +324,8 @@ func (user *User) updateTicks(ctx context.Context) {
 					field = &BaseHousing
 					fieldPercent = &HousingPercentModifier
 				default:
-					log.Warn().Msg("Unexpected buff field")
+					log.Warn().Str("field", effect.Field).Msg("Unexpected buff field")
+					continue
 				}
 
 				if effect.Percent {
@@ -347,28 +339,16 @@ func (user *User) updateTicks(ctx context.Context) {
 		}
 	}
 
-	user.RoundData.TickFood = (BaseFood * FoodPercentModifier) - CostFood
-	user.RoundData.TickWood = (BaseWood * WoodPercentModifier) - CostWood
-	user.RoundData.TickGold = (BaseGold * GoldPercentModifier) - CostGold
-	user.RoundData.TickFaith = (BaseFaith * FaithPercentModifier) - CostFaith
-	user.RoundData.TickMana = (BaseMana * ManaPercentModifier) - CostMana
-	user.RoundData.TickMetal = (BaseMetal * MetalPercentModifier) - CostMetal
-	user.RoundData.TickStone = (BaseStone * StonePercentModifier) - CostStone
-	user.RoundData.BuildPower = BaseBuildPower * BuildPowerPercentModifier
-	user.RoundData.RecruitPower = BaseRecruitPower * RecruitPowerPercentModifier
-	user.RoundData.Housing = BaseHousing * HousingPercentModifier
-	user.RoundData.Defense = BaseDefense * DefensePercentModifier
-
 	span.AddEvent("Handling devotion")
 	var devotion *Devotion
 	if err := db.WithContext(ctx).
-		Joins("INNER JOIN user_devotions ON ( user_devotions.pantheon = devotions.id AND user_devotions.level = devotions.level )").
-		Where("user_id = ? AND round_id = ?", user.ID, user.RoundID).
-		Find(&devotion).Error; err == nil && devotion != nil {
+		Joins("INNER JOIN user_devotions ON user_devotions.pantheon = devotions.pantheon").
+		Where("user_id = ? AND round_id = ? AND user_devotions.level = devotions.level AND user_devotions.deleted_at IS null", user.ID, user.RoundID).
+		Find(&devotion).Error; err == nil && devotion != nil && devotion.GUID != uuid.Nil {
 
 		log.Info().Msg("FOUND DEVOTION TO UPDATE FAITH TICK")
 		devotion.Dump()
-		CostFaith += float64(devotion.Upkeep)
+		costs.Faith += float64(devotion.Upkeep)
 	} else {
 		if err != nil {
 			log.Error().Err(err).Msg("Error retrieving devotion in user.updateTicks")
@@ -378,17 +358,39 @@ func (user *User) updateTicks(ctx context.Context) {
 	}
 
 	span.AddEvent("Collated values")
-	user.RoundData.TickFood = BaseFood - CostFood
-	user.RoundData.TickWood = BaseWood - CostWood
-	user.RoundData.TickGold = BaseGold - CostGold
-	user.RoundData.TickFaith = BaseFaith - CostFaith
-	user.RoundData.TickMana = BaseMana - CostMana
-	user.RoundData.TickMetal = BaseMetal - CostMetal
-	user.RoundData.TickStone = BaseStone - CostStone
-	user.RoundData.BuildPower = BaseBuildPower
-	user.RoundData.RecruitPower = BaseRecruitPower
-	user.RoundData.Housing = BaseHousing
-	user.RoundData.Defense = BaseDefense
+
+	log.Warn().Any("costs", costs).Msg("Calculated Costs")
+
+	user.RoundData.TickFood = (BaseFood * FoodPercentModifier) - costs.Food
+	user.RoundData.TickWood = (BaseWood * WoodPercentModifier) - costs.Wood
+	user.RoundData.TickGold = (BaseGold * GoldPercentModifier) - costs.Gold
+	user.RoundData.TickFaith = (BaseFaith * FaithPercentModifier) - costs.Faith
+	user.RoundData.TickMana = (BaseMana * ManaPercentModifier) - costs.Mana
+	user.RoundData.TickMetal = (BaseMetal * MetalPercentModifier) - costs.Metal
+	user.RoundData.TickStone = (BaseStone * StonePercentModifier) - costs.Stone
+	user.RoundData.BuildPower = BaseBuildPower * BuildPowerPercentModifier
+	user.RoundData.RecruitPower = BaseRecruitPower * RecruitPowerPercentModifier
+	user.RoundData.Housing = BaseHousing * HousingPercentModifier
+	user.RoundData.Defense = BaseDefense * DefensePercentModifier
+}
+
+func (user *User) getUnitCosts(costs Costs) Costs {
+	for _, unit := range user.Units {
+		baseUnit := user.Round.MapUnitsById[unit.UnitID]
+		quantity := math.Floor(unit.Quantity)
+
+		if quantity > 0 {
+			costs.Faith += realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepFaith), 2)
+			costs.Food += realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepFood), 2)
+			costs.Gold += realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepGold), 2)
+			costs.Mana += realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepMana), 2)
+			costs.Metal += realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepMetal), 2)
+			costs.Stone += realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepStone), 2)
+			costs.Wood += realmUtils.RoundFloat(quantity*float64(baseUnit.UpkeepWood), 2)
+		}
+	}
+
+	return costs
 }
 
 func (user *User) UpdateRank(base context.Context) {
@@ -418,7 +420,7 @@ func (user *User) UpdateRank(base context.Context) {
 }
 
 func (user *User) UpdateRound(ctx context.Context, wg *sync.WaitGroup) bool {
-	ctx, span := Tracer.Start(ctx, "user-update-round")
+	ctx, span := utils.StartSpan(ctx, "user.UpdateRound")
 	defer span.End()
 	if wg != nil {
 		defer wg.Done()
@@ -527,7 +529,11 @@ func (user *User) loadBuffs(ctx context.Context, wg *sync.WaitGroup) {
 
 	log.Warn().Msg("loadBuffs")
 
-	db.WithContext(ctx).Where("user_id = ? and round_id = ?", user.ID, getRound(user)).Find(&user.Buffs)
+	if err := db.WithContext(ctx).Where("user_id = ? and round_id = ?", user.ID, getRound(user)).Find(&user.Buffs).Error; err != nil {
+		log.Error().Err(err).Int("user", int(user.ID)).Int("round", getRound(user)).Msg("Error loading user buffs")
+	} else {
+		log.Info().Int("buffs", len(user.Buffs)).Int("user", int(user.ID)).Int("round", getRound(user)).Msg("Loaded user buffs")
+	}
 }
 
 func (user *User) Load() *User {
@@ -545,51 +551,51 @@ func (user *User) Load() *User {
 }
 
 func (user *User) Dump() {
-	log.Trace().Msg("============USER=============")
-	log.Trace().Msg("GUID:" + fmt.Sprint(user.GUID))
-	log.Trace().Msg("Email:" + fmt.Sprint(user.Email))
-	log.Trace().Msg("Round:" + fmt.Sprint(user.RoundID))
-	log.Trace().Msg("RoundLoading:" + fmt.Sprint(user.RoundLoading))
-	log.Trace().Msg("Password:" + fmt.Sprint(user.Password))
+	log.Warn().Msg("============USER=============")
+	log.Warn().Msg("GUID:" + fmt.Sprint(user.GUID))
+	log.Warn().Msg("Email:" + fmt.Sprint(user.Email))
+	log.Warn().Msg("Round:" + fmt.Sprint(user.RoundID))
+	log.Warn().Msg("RoundLoading:" + fmt.Sprint(user.RoundLoading))
+	log.Warn().Msg("Password:" + fmt.Sprint(user.Password))
 	if user.Admin {
-		log.Trace().Msg("Admin: Yes")
+		log.Warn().Msg("Admin: Yes")
 	} else {
-		log.Trace().Msg("Admin: No")
+		log.Warn().Msg("Admin: No")
 	}
 
-	log.Trace().Msg("============ROUND============")
-	log.Trace().Msg("Energy:" + fmt.Sprint(user.RoundData.Energy))
-	log.Trace().Msg("RecruitPower:" + fmt.Sprint(user.RoundData.RecruitPower))
-	log.Trace().Msg("BuildPower:" + fmt.Sprint(user.RoundData.BuildPower))
-	log.Trace().Float64("have", user.RoundData.Gold).Float64("tick", user.RoundData.TickGold).Msg("gold")
-	log.Trace().Float64("have", user.RoundData.Food).Float64("tick", user.RoundData.TickFood).Msg("food")
-	log.Trace().Float64("have", user.RoundData.Wood).Float64("tick", user.RoundData.TickWood).Msg("wood")
-	log.Trace().Float64("have", user.RoundData.Metal).Float64("tick", user.RoundData.TickMetal).Msg("metal")
-	log.Trace().Float64("have", user.RoundData.Faith).Float64("tick", user.RoundData.TickFaith).Msg("faith")
-	log.Trace().Float64("have", user.RoundData.Stone).Float64("tick", user.RoundData.TickStone).Msg("stone")
-	log.Trace().Float64("have", user.RoundData.Mana).Float64("tick", user.RoundData.TickMana).Msg("mana")
+	log.Warn().Msg("============ROUND============")
+	log.Warn().Msg("Energy:" + fmt.Sprint(user.RoundData.Energy))
+	log.Warn().Msg("RecruitPower:" + fmt.Sprint(user.RoundData.RecruitPower))
+	log.Warn().Msg("BuildPower:" + fmt.Sprint(user.RoundData.BuildPower))
+	log.Warn().Float64("have", user.RoundData.Gold).Float64("tick", user.RoundData.TickGold).Msg("gold")
+	log.Warn().Float64("have", user.RoundData.Food).Float64("tick", user.RoundData.TickFood).Msg("food")
+	log.Warn().Float64("have", user.RoundData.Wood).Float64("tick", user.RoundData.TickWood).Msg("wood")
+	log.Warn().Float64("have", user.RoundData.Metal).Float64("tick", user.RoundData.TickMetal).Msg("metal")
+	log.Warn().Float64("have", user.RoundData.Faith).Float64("tick", user.RoundData.TickFaith).Msg("faith")
+	log.Warn().Float64("have", user.RoundData.Stone).Float64("tick", user.RoundData.TickStone).Msg("stone")
+	log.Warn().Float64("have", user.RoundData.Mana).Float64("tick", user.RoundData.TickMana).Msg("mana")
 
-	log.Trace().Msg("============UNITS============")
+	log.Warn().Msg("============UNITS============")
 	for i := 0; i < len(user.Units); i++ {
-		log.Trace().Float64("quantity", user.Units[i].Quantity).Msg("ID: " + fmt.Sprint(user.Units[i].UnitID))
+		log.Warn().Float64("quantity", user.Units[i].Quantity).Msg("ID: " + fmt.Sprint(user.Units[i].UnitID))
 	}
 
-	log.Trace().Msg("==========BUILDINGS==========")
+	log.Warn().Msg("==========BUILDINGS==========")
 	for i := 0; i < len(user.Buildings); i++ {
-		log.Trace().Float64("quantity", user.Buildings[i].Quantity).Msg("ID: " + fmt.Sprint(user.Buildings[i].BuildingID))
+		log.Warn().Float64("quantity", user.Buildings[i].Quantity).Msg("ID: " + fmt.Sprint(user.Buildings[i].BuildingID))
 	}
 
-	log.Trace().Msg("============ITEMS============")
+	log.Warn().Msg("============ITEMS============")
 	for i := 0; i < len(user.Items); i++ {
-		log.Trace().Msg("ID: " + fmt.Sprint(user.Items[i].ID))
+		log.Warn().Msg("ID: " + fmt.Sprint(user.Items[i].ID))
 	}
 
-	log.Trace().Msg("============BUFFS============")
+	log.Warn().Msg("============BUFFS============")
 	for i := 0; i < len(user.Buffs); i++ {
-		log.Trace().Msg("ID: " + fmt.Sprint(user.Buffs[i].ID))
+		log.Warn().Msg("ID: " + fmt.Sprint(user.Buffs[i].ID))
 	}
 
-	log.Trace().Msg("=============================")
+	log.Warn().Msg("=============================")
 }
 
 func (user *User) sendUserData() {
@@ -793,6 +799,9 @@ func (user *User) getDeficit(field string) int {
 }
 
 func (user *User) ProcessBankruptcy(ctx context.Context, field string) bool {
+	ctx, span := utils.StartSpan(ctx, "user.ProcessBankruptcy")
+	defer span.End()
+
 	log.Warn().Msg("ProcessBankruptcy: " + field)
 
 	if user.getDeficit(field) >= 0 {
@@ -807,73 +816,84 @@ func (user *User) ProcessBankruptcy(ctx context.Context, field string) bool {
 		return true
 	}
 
-	user.Dump()
-
-	picker := realmUtils.Picker{}
-	for _, u := range user.Units {
-		unit := user.Round.GetUnitById(u.UnitID)
-		picker.Add(unit.GetUpkeep(field)*uint(u.Quantity), u.UnitID)
+	if field == "faith" {
+		if user.RenounceDevotion(ctx) {
+			user.updateTicks(ctx)
+			if user.getDeficit(field) >= 0 {
+				return true
+			}
+		}
 	}
 
-	choice := picker.Choose()
-	for _, u := range user.Units {
-		log.Trace().Msg("Choice " + fmt.Sprint(choice) + " ::: " + fmt.Sprint(u.UnitID))
-		if u.UnitID == choice {
+	if len(user.Units) > 0 {
+		picker := realmUtils.Picker{}
+		for _, u := range user.Units {
 			unit := user.Round.GetUnitById(u.UnitID)
-			deficit := user.getDeficit(field)
+			picker.Add(unit.GetUpkeep(field)*uint(u.Quantity), u.UnitID)
+		}
 
-			count := int(math.Ceil(-float64(deficit) / float64(unit.GetUpkeep(field))))
-			log.Warn().Msg("Deficit: " + fmt.Sprint(deficit))
-			log.Warn().Msg(fmt.Sprint(-float64(deficit) / float64(unit.GetUpkeep(field))))
-			log.Warn().Msg("Unit Upkeep: " + fmt.Sprint(unit.GetUpkeep(field)))
+		choice := picker.Choose()
+		for _, u := range user.Units {
+			log.Trace().Msg("Choice " + fmt.Sprint(choice) + " ::: " + fmt.Sprint(u.UnitID))
+			if u.UnitID == choice {
+				unit := user.Round.GetUnitById(u.UnitID)
+				deficit := user.getDeficit(field)
 
-			if count == 0 {
-				log.Panic().Msg("Count is 0")
-			}
+				count := int(math.Ceil(-float64(deficit) / float64(unit.GetUpkeep(field))))
+				log.Warn().Msg("Deficit: " + fmt.Sprint(deficit))
+				log.Warn().Msg(fmt.Sprint(-float64(deficit) / float64(unit.GetUpkeep(field))))
+				log.Warn().Msg("Unit Upkeep: " + fmt.Sprint(unit.GetUpkeep(field)))
 
-			log.Warn().Msg("Get rid of " + fmt.Sprint(count) + " " + unit.Name)
+				if count == 0 {
+					log.Panic().Msg("Count is 0")
+				}
 
-			taken := user.takeUnit(ctx, int(u.UnitID), count)
-			if taken {
-				user.updateTicks(ctx)
-				return user.ProcessBankruptcy(ctx, field)
+				log.Warn().Msg("Get rid of " + fmt.Sprint(count) + " " + unit.Name)
+
+				taken := user.takeUnit(ctx, int(u.UnitID), count)
+				if taken {
+					user.updateTicks(ctx)
+					return user.ProcessBankruptcy(ctx, field)
+				}
 			}
 		}
 	}
 
-	picker = realmUtils.Picker{}
-	for _, b := range user.Buildings {
-		building := user.Round.GetUnitById(b.BuildingID)
-		picker.Add(building.GetUpkeep(field)*uint(b.Quantity), b.BuildingID)
-	}
+	if len(user.Buildings) > 0 {
+		picker := realmUtils.Picker{}
+		for _, b := range user.Buildings {
+			building := user.Round.GetUnitById(b.BuildingID)
+			picker.Add(building.GetUpkeep(field)*uint(b.Quantity), b.BuildingID)
+		}
 
-	choice = picker.Choose()
-	for _, b := range user.Buildings {
-		log.Trace().Msg("Choice " + fmt.Sprint(choice) + " ::: " + fmt.Sprint(b.BuildingID))
-		if b.BuildingID == choice {
-			building := user.Round.GetBuildingById(b.BuildingID)
-			deficit := user.getDeficit(field)
+		choice := picker.Choose()
+		for _, b := range user.Buildings {
+			log.Trace().Msg("Choice " + fmt.Sprint(choice) + " ::: " + fmt.Sprint(b.BuildingID))
+			if b.BuildingID == choice {
+				building := user.Round.GetBuildingById(b.BuildingID)
+				deficit := user.getDeficit(field)
 
-			count := int(math.Ceil(-float64(deficit) / float64(building.GetUpkeep(field))))
-			log.Warn().Msg("Deficit: " + fmt.Sprint(deficit))
-			log.Warn().Msg(fmt.Sprint(-float64(deficit) / float64(building.GetUpkeep(field))))
-			log.Warn().Msg("Unit Upkeep: " + fmt.Sprint(building.GetUpkeep(field)))
+				count := int(math.Ceil(-float64(deficit) / float64(building.GetUpkeep(field))))
+				log.Warn().Msg("Deficit: " + fmt.Sprint(deficit))
+				log.Warn().Msg(fmt.Sprint(-float64(deficit) / float64(building.GetUpkeep(field))))
+				log.Warn().Msg("Unit Upkeep: " + fmt.Sprint(building.GetUpkeep(field)))
 
-			if count == 0 {
-				log.Panic().Msg("Count is 0")
-			}
+				if count == 0 {
+					log.Panic().Msg("Count is 0")
+				}
 
-			log.Warn().Msg("Get rid of " + fmt.Sprint(count) + " " + building.Name)
+				log.Warn().Msg("Get rid of " + fmt.Sprint(count) + " " + building.Name)
 
-			taken := user.takeBuilding(ctx, int(b.BuildingID), count)
-			if taken {
-				user.updateTicks(ctx)
-				return user.ProcessBankruptcy(ctx, field)
+				taken := user.takeBuilding(ctx, int(b.BuildingID), count)
+				if taken {
+					user.updateTicks(ctx)
+					return user.ProcessBankruptcy(ctx, field)
+				}
 			}
 		}
 	}
 
-	log.Info().Msg("Deficit Not handled: " + fmt.Sprint(choice))
+	log.Info().Int("user", int(user.ID)).Int("round", user.RoundID).Str("field", field).Msg("Deficit Not handled")
 	return false
 }
 
@@ -979,7 +999,7 @@ func (user *User) IsPlayingRound(ctx context.Context, round int) bool {
 func (user *User) Join(ctx context.Context, round *Round, classType string) *User {
 	log.Info().Str("round", round.GUID.String()).Msg("Joining round")
 
-	ctx, span := Tracer.Start(ctx, "user.Join")
+	ctx, span := utils.StartSpan(ctx, "user.Join")
 	defer span.End()
 
 	data := &UserRound{
@@ -1200,62 +1220,6 @@ func (user *User) AddBuilding(baseContext context.Context, building *Building, q
 	return true
 }
 
-func (user *User) AddBuff(baseContext context.Context, buff *Buff) bool {
-	ctx, span := Tracer.Start(baseContext, "User.AddBuff")
-	defer span.End()
-
-	log.Warn().Int("user", int(user.ID)).Int("buff", int(buff.ID)).Msg("User.AddBuff")
-
-	span.SetAttributes(
-		attribute.Int("user", int(user.ID)),
-		attribute.Int("buff", int(buff.ID)),
-	)
-
-	found := false
-	var temp *UserBuff
-	for i := 0; i < len(user.Buffs) && !found; i++ {
-		if user.Buffs[i].BuffID == buff.ID {
-			temp = user.Buffs[i]
-			temp.Stacks = temp.Stacks + 1
-			if temp.Stacks > buff.MaxStacks {
-				temp.Stacks = buff.MaxStacks
-			}
-		}
-	}
-
-	if temp == nil {
-		log.Warn().Msg("Creating new UserBuff: " + fmt.Sprint(getRound(user)))
-		temp = &UserBuff{
-			UserID:  user.ID,
-			RoundID: uint(getRound(user)),
-			BuffID:  buff.ID,
-			Stacks:  1,
-		}
-
-		if buff.Duration != 0 {
-			temp.Expires = time.Now()
-		} else {
-			log.Warn().Msg("Duration is 0")
-			if round, err := LoadRoundById(ctx, getRound(user)); err == nil {
-				fmt.Println(round)
-				temp.Expires = round.Ends
-
-				log.Warn().Msg("Set expires: " + fmt.Sprint(temp.Expires))
-			} else {
-				log.Error().AnErr("err", err).Msg("Error loading round")
-			}
-		}
-
-		user.Buffs = append(user.Buffs, temp)
-	}
-
-	if buff.Duration != 0 {
-		temp.Expires = time.Now().Add(buff.Duration)
-	}
-
-	return true
-}
-
 func (user *User) RemoveExpiredBuffs(baseContext context.Context) bool {
 	ctx, span := Tracer.Start(baseContext, "remove-expired-buffs")
 	defer span.End()
@@ -1384,7 +1348,7 @@ func (user *User) PurchaseTechnology(baseContext context.Context, technology *Te
 
 			if buff, err := LoadBuffById(ctx, int(technology.Buff)); err == nil && buff != nil {
 				buff.Dump()
-				user.AddBuff(ctx, buff)
+				buff.AddToUser(ctx, user)
 			} else {
 				log.Error().Msg("Buff not found")
 				return errors.New("buff not found")
@@ -1532,6 +1496,84 @@ func (user *User) SellResource(baseContext context.Context, quantity uint, resou
 
 	log.Warn().Msg("Failed to load round")
 	return false
+}
+
+func (user *User) GetDevotion(baseContext context.Context) *UserDevotion {
+	ctx, span := utils.StartSpan(baseContext, "user.GetDevotion")
+	defer span.End()
+
+	var devotion *UserDevotion
+	if err := db.WithContext(ctx).
+		Select("user_devotions.id", "user_id", "round_id", "pantheon", "pantheons.category AS pantheon_name", "level").
+		Joins("INNER JOIN pantheons ON pantheons.id = pantheon").
+		Where("user_id = ? AND round_id = ?", user.ID, user.RoundID).
+		Find(&devotion).Error; err != nil {
+		log.Error().Err(err).Msg("Error retrieving user devotion")
+	}
+
+	devotion.Dump()
+
+	return devotion
+}
+
+func (user *User) RenounceDevotion(baseContext context.Context) bool {
+	ctx, span := utils.StartSpan(baseContext, "user.RenounceDevotion")
+	defer span.End()
+
+	log.Info().Uint("user", user.ID).Msg("RenounceDevotion")
+
+	success := false
+	before := len(user.Buffs)
+
+	var devotion *UserDevotion
+	if err := db.WithContext(ctx).Table("user_devotions").Where("user_id = ? AND round_id = ?", user.ID, user.RoundID).Find(&devotion).Error; err == nil {
+		log.Info().Uint("panthon", devotion.Pantheon).Msg("Retrieved pantheon for user")
+
+		if pantheon := GetPantheonById(ctx, devotion.Pantheon); pantheon != nil {
+			pantheon.Dump()
+			devotion.Dump()
+
+			success = true
+			for i, d := range pantheon.Devotions {
+				if i >= int(devotion.Level) {
+					break
+				}
+				log.Warn().Int("Level", i).Msg("Process level")
+				d.Dump()
+
+				if buff, err := LoadBuffById(ctx, int(d.Buff)); err == nil {
+					log.Warn().Int("User Buffs", len(user.Buffs)).Msg("Before removal of buff")
+					if !buff.RemoveFromUser(ctx, user) {
+						success = false
+						break
+					}
+				} else {
+					log.Error().Err(err).Int("buff", int(d.Buff)).Msg("Error loading buff")
+				}
+			}
+		} else {
+			log.Error().Uint("pantheon", devotion.Pantheon).Msg("Pantheon not found for id")
+		}
+	} else {
+		log.Error().Err(err).Msg("Error retrieving user's pantheon")
+	}
+
+	success = len(user.Buffs) == before-int(devotion.Level)
+	if success {
+		if err := db.WithContext(ctx).Where("user_id = ? AND round_id = ?", user.ID, user.RoundID).Delete(&UserDevotion{}).Unscoped().Error; err == nil {
+			user.RoundData.LostDevotion = time.Now().Unix()
+			if err := db.WithContext(ctx).Save(&user).Error; err != nil {
+				success = false
+				log.Error().Err(err).Msg("Error updating user after removing devotions")
+			} else {
+				log.Info().Msg("Devotion buffs removed")
+			}
+		} else {
+			log.Error().Err(err).Int("user", int(user.ID)).Int("round", user.RoundID).Msg("Error deleting user devotion")
+		}
+	}
+
+	return success
 }
 
 func (user *User) Save(ctx context.Context) error {

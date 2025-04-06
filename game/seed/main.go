@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/Vintral/pocket-realm/game/temple"
 	models "github.com/Vintral/pocket-realm/models"
 	realmRedis "github.com/Vintral/pocket-realm/redis"
+	"github.com/Vintral/pocket-realm/utils"
 	"github.com/google/uuid"
 	redisDef "github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
@@ -63,6 +66,11 @@ func main() {
 		panic(err)
 	}
 
+	ctx := context.WithValue(context.Background(), utils.KeyTraceProvider{}, tp)
+	ctx = context.WithValue(ctx, utils.KeyDB{}, db)
+	ctx = context.WithValue(ctx, utils.KeyUser{}, &models.User{})
+	ctx = context.WithValue(ctx, utils.KeyTraceProvider{}, tp)
+
 	if len(os.Args) > 1 && os.Args[1] == "users" {
 		numUsers := 0
 
@@ -82,12 +90,14 @@ func main() {
 		item1, item2 := createItems(db)
 
 		createUserTables(db, round)
-		createUsers(db, round, item1, item2)
+		createUsers(ctx, round, item1, item2)
 		createContacts(db)
 
 		var user *models.User
 		db.First(&user)
 		log.Info().Any("user", user).Msg("Loaded User")
+
+		ctx = context.WithValue(ctx, utils.KeyUser{}, user)
 
 		createRules(db)
 		createNews(db)
@@ -97,7 +107,7 @@ func main() {
 		createBuffs(db)
 		createTechnologies(db, user)
 
-		createTemple(db)
+		createTemple(ctx)
 
 		createOverrides(db)
 
@@ -117,7 +127,7 @@ func createUserTables(db *gorm.DB, round *models.Round) {
 	//================================//
 	// Users Units										//
 	//================================//
-	fmt.Println("Seeding User's Units")
+	log.Info().Msg("Seeding User's Units")
 	// db.Create(&models.UserUnit{
 	// 	UserID:   1,
 	// 	UnitID:   1,
@@ -152,7 +162,7 @@ func createUserTables(db *gorm.DB, round *models.Round) {
 	//================================//
 	// User Buildings									//
 	//================================//
-	fmt.Println("Seeding User's Buildings")
+	log.Info().Msg("Seeding User's Buildings")
 	// db.Create(&models.UserBuilding{
 	// 	UserID:     1,
 	// 	BuildingID: 1,
@@ -193,7 +203,7 @@ func createUserTables(db *gorm.DB, round *models.Round) {
 	//================================//
 	// User Items											//
 	//================================//
-	fmt.Println("Seeding User's Items")
+	log.Info().Msg("Seeding User's Items")
 	// db.Create(&models.UserItem{
 	// 	UserID: 1,
 	// 	ItemID: 1,
@@ -202,7 +212,7 @@ func createUserTables(db *gorm.DB, round *models.Round) {
 	//================================//
 	// Users Rounds										//
 	//================================//
-	fmt.Println("Seeding User's Round")
+	log.Info().Msg("Seeding User's Round")
 
 	db.Create(&models.UserRound{
 		UserID:         1,
@@ -217,7 +227,7 @@ func createUserTables(db *gorm.DB, round *models.Round) {
 		TickFood:       0,
 		Wood:           200,
 		Metal:          200,
-		Faith:          200,
+		Faith:          25,
 		Stone:          200,
 		Mana:           200,
 		Land:           200,
@@ -314,55 +324,55 @@ func createUserTables(db *gorm.DB, round *models.Round) {
 		RecruitPower:   1,
 	})
 
-	// db.Create(&models.UserRound{
-	// 	UserID:         1,
-	// 	RoundID:        2,
-	// 	CharacterClass: "mage",
-	// 	Energy:         int(round.EnergyMax),
-	// 	Gold:           200,
-	// 	TickGold:       5,
-	// 	Food:           200,
-	// 	TickFood:       5,
-	// 	Wood:           200,
-	// 	TickWood:       5,
-	// 	Metal:          200,
-	// 	TickMetal:      5,
-	// 	Faith:          200,
-	// 	TickFaith:      5,
-	// 	Stone:          200,
-	// 	TickStone:      5,
-	// 	Mana:           200,
-	// 	TickMana:       5,
-	// 	Land:           200,
-	// 	FreeLand:       200,
-	// 	BuildPower:     25,
-	// 	RecruitPower:   25,
-	// })
-	// db.Create(&models.UserRound{
-	// 	UserID:         3,
-	// 	RoundID:        1,
-	// 	CharacterClass: "priest",
-	// })
-	// db.Create(&models.UserRound{
-	// 	UserID:         4,
-	// 	RoundID:        1,
-	// 	CharacterClass: "warlord",
-	// })
-	// db.Create(&models.UserRound{
-	// 	UserID:         5,
-	// 	RoundID:        1,
-	// 	CharacterClass: "necromancer",
-	// })
-	// db.Create(&models.UserRound{
-	// 	UserID:         6,
-	// 	RoundID:        1,
-	// 	CharacterClass: "merchant",
-	// })
-	// db.Create(&models.UserRound{
-	// 	UserID:         7,
-	// 	RoundID:        1,
-	// 	CharacterClass: "druid",
-	// })
+	db.Create(&models.UserRound{
+		UserID:         1,
+		RoundID:        2,
+		CharacterClass: "mage",
+		Energy:         int(round.EnergyMax),
+		Gold:           200,
+		TickGold:       5,
+		Food:           200,
+		TickFood:       5,
+		Wood:           200,
+		TickWood:       5,
+		Metal:          200,
+		TickMetal:      5,
+		Faith:          200,
+		TickFaith:      5,
+		Stone:          200,
+		TickStone:      5,
+		Mana:           200,
+		TickMana:       5,
+		Land:           200,
+		FreeLand:       200,
+		BuildPower:     25,
+		RecruitPower:   25,
+	})
+	db.Create(&models.UserRound{
+		UserID:         3,
+		RoundID:        1,
+		CharacterClass: "priest",
+	})
+	db.Create(&models.UserRound{
+		UserID:         4,
+		RoundID:        1,
+		CharacterClass: "warlord",
+	})
+	db.Create(&models.UserRound{
+		UserID:         5,
+		RoundID:        1,
+		CharacterClass: "necromancer",
+	})
+	db.Create(&models.UserRound{
+		UserID:         6,
+		RoundID:        1,
+		CharacterClass: "merchant",
+	})
+	db.Create(&models.UserRound{
+		UserID:         7,
+		RoundID:        1,
+		CharacterClass: "druid",
+	})
 }
 
 func createTechnologies(db *gorm.DB, user *models.User) {
@@ -639,14 +649,22 @@ func createRounds(db *gorm.DB) (current *models.Round, finished *models.Round) {
 	return ret, round
 }
 
-func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item) {
-	//================================//
-	// Users													//
-	//================================//
-	fmt.Println("Seeding users")
+func createUsers(baseContext context.Context, r *models.Round, i1 *models.Item, i2 *models.Item) {
+	ctx, span := utils.StartSpan(baseContext, "seed.createUsers")
+	defer span.End()
 
-	var round models.Round
-	db.Model(models.Round{GUID: r.GUID}).First(&round)
+	var db *gorm.DB
+	if db = baseContext.Value(utils.KeyDB{}).(*gorm.DB); db == nil {
+		log.Error().Msg("Database not found")
+		return
+	}
+
+	log.Info().Str("round", r.GUID.String()).Msg("Seeding Users")
+
+	var round *models.Round
+	if err := db.WithContext(ctx).Where("guid = ?", r.GUID.String()).Find(&round).Error; err != nil {
+		log.Error().Err(err).Msg("Error loading round")
+	}
 
 	user := &models.User{
 		Email:        "jeffrey.heater@gmail.com",
@@ -656,14 +674,14 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		RoundID:      int(round.ID),
 		RoundPlaying: round.GUID,
 	}
-	db.FirstOrCreate(&user)
-	user = user.Join(context.Background(), &round, "warlock")
-	user.AddItem(ctx, i1)
-	user.AddItem(ctx, i1)
-	user.AddItem(ctx, i2)
+	db.WithContext(ctx).FirstOrCreate(&user)
+	user = user.Join(ctx, round, "warlock")
+	user.AddItem(baseContext, i1)
+	user.AddItem(baseContext, i1)
+	user.AddItem(baseContext, i2)
 
 	log.Warn().Int("energy", user.RoundData.Energy).Int("food", int(user.RoundData.Food)).Msg("=======> BEFORE")
-	i1.Use(context.Background(), user)
+	i1.Use(ctx, user)
 	log.Warn().Int("energy", user.RoundData.Energy).Int("food", int(user.RoundData.Food)).Msg("=======> AFTER")
 
 	user = &models.User{
@@ -673,7 +691,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		Avatar:   "f2",
 	}
 	db.Create(&user)
-	user.Join(context.Background(), &round, "mage")
+	user.Join(ctx, round, "mage")
 
 	user = &models.User{
 		Email:        "jeffrey.heater1@gmail.com",
@@ -684,7 +702,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		RoundPlaying: round.GUID,
 	}
 	db.Create(&user)
-	user.Join(context.Background(), &round, "priest")
+	user.Join(ctx, round, "priest")
 
 	user = &models.User{
 		Email:        "jeffrey.heater2@gmail.com",
@@ -695,7 +713,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		RoundPlaying: round.GUID,
 	}
 	db.Create(&user)
-	user.Join(context.Background(), &round, "merchant")
+	user.Join(ctx, round, "merchant")
 
 	user = &models.User{
 		Email:        "jeffrey.heater3@gmail.com",
@@ -706,7 +724,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		RoundPlaying: round.GUID,
 	}
 	db.Create(&user)
-	user.Join(context.Background(), &round, "warlord")
+	user.Join(ctx, round, "warlord")
 
 	user = &models.User{
 		Email:        "jeffrey.heater4@gmail.com",
@@ -717,7 +735,7 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		RoundPlaying: round.GUID,
 	}
 	db.Create(&user)
-	user.Join(context.Background(), &round, "thief")
+	user.Join(ctx, round, "thief")
 
 	user = &models.User{
 		Email:        "jeffrey.heater5@gmail.com",
@@ -728,7 +746,9 @@ func createUsers(db *gorm.DB, r *models.Round, i1 *models.Item, i2 *models.Item)
 		RoundPlaying: round.GUID,
 	}
 	db.Create(&user)
-	user.Join(context.Background(), &round, "mage")
+	user.Join(ctx, round, "mage")
+
+	log.Error().Msg("Done Users")
 }
 
 func createShouts(db *gorm.DB) {
@@ -1247,55 +1267,28 @@ func createResources(db *gorm.DB) {
 	db.Create(&models.RoundResource{RoundID: 0, ResourceID: 8, StartWith: 0, CanGather: false, CanMarket: false})
 }
 
-func createDevotionBuff(db *gorm.DB, data BuffInfo) *models.Buff {
-	buff := models.Buff{
-		Name:      data.Name,
-		Field:     data.Field,
-		Bonus:     data.Bonus,
-		Type:      data.Category,
-		Item:      data.Item,
-		MaxStacks: 1,
-		Percent:   data.Percent,
-	}
-	db.Save(&buff)
-
-	return &buff
-}
-
 func createLifePantheon(db *gorm.DB) {
 	pantheon := &models.Pantheon{
 		Category: "Life",
 	}
 	db.Create(pantheon)
-	buff := createDevotionBuff(db, BuffInfo{
-		Name: "+25% Population Growth", Field: "population_growth", Category: "player", Bonus: 25, Percent: true,
+	db.Create(&models.Devotion{
+		Pantheon: pantheon.ID,
+		Level:    1,
+		Upkeep:   25,
+		Buff:     8,
 	})
 	db.Create(&models.Devotion{
-		Pantheon:        pantheon.ID,
-		Level:           1,
-		Upkeep:          25,
-		Buff:            buff.ID,
-		BuffDescription: buff.Name,
-	})
-	buff = createDevotionBuff(db, BuffInfo{
-		Name: "+25% Population Growth", Field: "population_growth", Category: "player", Bonus: 25, Percent: true,
+		Pantheon: pantheon.ID,
+		Level:    2,
+		Upkeep:   50,
+		Buff:     9,
 	})
 	db.Create(&models.Devotion{
-		Pantheon:        pantheon.ID,
-		Level:           2,
-		Upkeep:          50,
-		Buff:            buff.ID,
-		BuffDescription: buff.Name,
-	})
-	buff = createDevotionBuff(db, BuffInfo{
-		Name: "+50% Population Growth", Field: "population_growth", Category: "player", Bonus: 50, Percent: true,
-	})
-	db.Create(&models.Devotion{
-		Pantheon:        pantheon.ID,
-		Level:           3,
-		Upkeep:          100,
-		Buff:            buff.ID,
-		BuffDescription: buff.Name,
+		Pantheon: pantheon.ID,
+		Level:    3,
+		Upkeep:   100,
+		Buff:     10,
 	})
 }
 
@@ -1304,36 +1297,23 @@ func createWarPantheon(db *gorm.DB) {
 		Category: "War",
 	}
 	db.Create(&pantheon)
-
-	buff := createDevotionBuff(db, BuffInfo{
-		Name: "+5 Attack for Units", Field: "attack", Category: "unit", Bonus: 5,
+	db.Create(&models.Devotion{
+		Pantheon: pantheon.ID,
+		Level:    1,
+		Upkeep:   25,
+		Buff:     11,
 	})
 	db.Create(&models.Devotion{
-		Pantheon:        pantheon.ID,
-		Level:           1,
-		Upkeep:          25,
-		Buff:            buff.ID,
-		BuffDescription: buff.Name,
-	})
-	buff = createDevotionBuff(db, BuffInfo{
-		Name: "+5 Defense for Units", Field: "defense", Category: "unit", Bonus: 5,
+		Pantheon: pantheon.ID,
+		Level:    2,
+		Upkeep:   50,
+		Buff:     12,
 	})
 	db.Create(&models.Devotion{
-		Pantheon:        pantheon.ID,
-		Level:           2,
-		Upkeep:          50,
-		Buff:            buff.ID,
-		BuffDescription: buff.Name,
-	})
-	buff = createDevotionBuff(db, BuffInfo{
-		Name: "+5 Health for Units", Field: "health", Category: "unit", Bonus: 5,
-	})
-	db.Create(&models.Devotion{
-		Pantheon:        pantheon.ID,
-		Level:           3,
-		Upkeep:          100,
-		Buff:            buff.ID,
-		BuffDescription: buff.Name,
+		Pantheon: pantheon.ID,
+		Level:    3,
+		Upkeep:   100,
+		Buff:     13,
 	})
 }
 
@@ -1343,83 +1323,84 @@ func createDeathPantheon(db *gorm.DB) {
 	}
 	db.Create(&pantheon)
 
-	buff := createDevotionBuff(db, BuffInfo{
-		Name: "-25% Population Growth", Field: "population_growth", Category: "player", Bonus: -25, Percent: true,
+	db.Create(&models.Devotion{
+		Pantheon: pantheon.ID,
+		Level:    1,
+		Upkeep:   25,
+		Buff:     14,
 	})
 	db.Create(&models.Devotion{
-		Pantheon:        pantheon.ID,
-		Level:           1,
-		Upkeep:          25,
-		Buff:            buff.ID,
-		BuffDescription: buff.Name,
-	})
-	buff = createDevotionBuff(db, BuffInfo{
-		Name: "-25% Population Growth", Field: "population_growth", Category: "player", Bonus: -25, Percent: true,
+		Pantheon: pantheon.ID,
+		Level:    2,
+		Upkeep:   50,
+		Buff:     15,
 	})
 	db.Create(&models.Devotion{
-		Pantheon:        pantheon.ID,
-		Level:           2,
-		Upkeep:          50,
-		Buff:            buff.ID,
-		BuffDescription: buff.Name,
-	})
-	buff = createDevotionBuff(db, BuffInfo{
-		Name: "-50% Population Growth", Field: "population_growth", Category: "player", Bonus: -50, Percent: true,
-	})
-	db.Create(&models.Devotion{
-		Pantheon:        pantheon.ID,
-		Level:           3,
-		Upkeep:          100,
-		Buff:            buff.ID,
-		BuffDescription: buff.Name,
+		Pantheon: pantheon.ID,
+		Level:    3,
+		Upkeep:   100,
+		Buff:     16,
 	})
 }
 
-func createEmpirePantheon(db *gorm.DB) {
+func createEmpirePantheon(db *gorm.DB) uuid.UUID {
 	pantheon := models.Pantheon{
 		Category: "Empire",
 	}
 	db.Create(&pantheon)
 
-	buff := createDevotionBuff(db, BuffInfo{
-		Name: "+5 Build Power", Field: "build_power", Category: "player", Bonus: 5,
+	db.Create(&models.Devotion{
+		Pantheon: pantheon.ID,
+		Level:    1,
+		Upkeep:   25,
+		Buff:     17,
 	})
 	db.Create(&models.Devotion{
-		Pantheon:        pantheon.ID,
-		Level:           1,
-		Upkeep:          25,
-		Buff:            buff.ID,
-		BuffDescription: buff.Name,
-	})
-	buff = createDevotionBuff(db, BuffInfo{
-		Name: "+50% Land Found Exploring", Field: "exploring_land_gain", Category: "player", Bonus: 50, Percent: true,
+		Pantheon: pantheon.ID,
+		Level:    2,
+		Upkeep:   50,
+		Buff:     18,
 	})
 	db.Create(&models.Devotion{
-		Pantheon:        pantheon.ID,
-		Level:           2,
-		Upkeep:          50,
-		Buff:            buff.ID,
-		BuffDescription: buff.Name,
+		Pantheon: pantheon.ID,
+		Level:    3,
+		Upkeep:   100,
+		Buff:     19,
 	})
-	buff = createDevotionBuff(db, BuffInfo{
-		Name: "+50% Gathering Returns", Field: "gathering_returns", Category: "player", Bonus: 50, Percent: true,
-	})
-	db.Create(&models.Devotion{
-		Pantheon:        pantheon.ID,
-		Level:           3,
-		Upkeep:          100,
-		Buff:            buff.ID,
-		BuffDescription: buff.Name,
-	})
+
+	return pantheon.GUID
 }
 
-func createTemple(db *gorm.DB) {
+func createTemple(baseContext context.Context) {
+	_, span := utils.StartSpan(baseContext, "seed.createTemple")
+	defer span.End()
+
 	log.Info().Msg("Creating Temple")
 
-	createLifePantheon(db)
-	createWarPantheon(db)
-	createDeathPantheon(db)
-	createEmpirePantheon(db)
+	if db := baseContext.Value(utils.KeyDB{}).(*gorm.DB); db != nil {
+		createLifePantheon(db)
+		createWarPantheon(db)
+		createDeathPantheon(db)
+		pantheon := createEmpirePantheon(db)
+
+		if payload, err := json.Marshal(struct {
+			Type     string
+			Pantheon uuid.UUID
+		}{
+			Type:     "RAISE_PANTHEON",
+			Pantheon: pantheon,
+		}); err == nil {
+			log.Warn().Any("payload", payload).Msg("Created payload")
+
+			ctx := context.WithValue(baseContext, utils.KeyPayload{}, payload)
+			temple.RaiseDevotion(ctx)
+		} else {
+			log.Error().Err(err).Msg("Error raising devotion")
+		}
+	} else {
+		log.Error().Msg("Database not found")
+		return
+	}
 }
 
 func createUnits(db *gorm.DB) *models.RoundUnit {

@@ -421,6 +421,31 @@ func (round *Round) Clone() *Round {
 	}
 }
 
+func (round *Round) Dump() {
+	log.Warn().Msg(`
+============ROUND===========
+GUID: ` + round.GUID.String() + `
+EnergyMax: ` + fmt.Sprint(round.EnergyMax) + `
+EnergyRegen: ` + fmt.Sprint(round.EnergyRegen) + `
+Starts: ` + round.Starts.String() + `
+Ends: ` + round.Ends.String() + `
+StartLand: ` + fmt.Sprint(round.StartLand) + `
+Resources: ` + fmt.Sprint(len(round.Resources)) + `
+Units: ` + fmt.Sprint(len(round.Units)) + `
+Buildings: ` + fmt.Sprint(len(round.Buildings)) + `
+Tick: ` + fmt.Sprint(round.Tick) + `
+FoodSold: ` + fmt.Sprint(round.FoodSold) + `
+FoodCost: ` + fmt.Sprint(round.FoodCost) + `
+WoodSold: ` + fmt.Sprint(round.WoodSold) + `
+WoodCost: ` + fmt.Sprint(round.WoodCost) + `
+StoneSold: ` + fmt.Sprint(round.StoneSold) + `
+StoneCost: ` + fmt.Sprint(round.StoneCost) + `
+MetalSold: ` + fmt.Sprint(round.MetalSold) + `
+MetalCost: ` + fmt.Sprint(round.MetalCost) + `
+============================
+	`)
+}
+
 func LoadRoundById(ctx context.Context, roundID int) (*Round, error) {
 	r := roundsById[roundID]
 	if r != nil {

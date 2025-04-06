@@ -50,7 +50,7 @@ func (pantheon *Pantheon) Dump() {
 	fmt.Println(val)
 
 	log.Info().Msg(`
-=============================
+==========PANTHEON===========
 ID: ` + fmt.Sprint(pantheon.ID) + `
 Category: ` + pantheon.Category + `
 Devotions: ` + val + `

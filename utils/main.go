@@ -7,6 +7,7 @@ import (
 
 	"go.opentelemetry.io/otel/sdk/trace"
 	span "go.opentelemetry.io/otel/trace"
+	"gorm.io/gorm"
 )
 
 type KeyTraceProvider struct{}
@@ -38,17 +39,28 @@ type StartSpanOpts struct {
 	TracerName string
 }
 
-func StartSpanWithOpts(ctx context.Context, spanName string, opts *StartSpanOpts) (context.Context, span.Span) {
-	provider := ctx.Value(KeyTraceProvider{}).(*trace.TracerProvider)
-
-	ctx, span := provider.Tracer(opts.TracerName).Start(ctx, spanName)
+func StartSpanWithOpts(baseContext context.Context, spanName string, opts *StartSpanOpts) (context.Context, span.Span) {
+	provider := baseContext.Value(KeyTraceProvider{}).(*trace.TracerProvider)
+	ctx, span := provider.Tracer(opts.TracerName).Start(baseContext, spanName)
 	ctx = context.WithValue(ctx, KeyTraceProvider{}, provider)
+
+	if baseContext.Value(KeyUser{}) != nil {
+		ctx = context.WithValue(ctx, KeyUser{}, baseContext.Value(KeyUser{}).(any))
+	}
+
+	if baseContext.Value(KeyDB{}) != nil {
+		ctx = context.WithValue(ctx, KeyDB{}, baseContext.Value(KeyDB{}).(*gorm.DB))
+	}
 
 	return ctx, span
 }
 
 func StartSpan(ctx context.Context, spanName string) (context.Context, span.Span) {
 	return StartSpanWithOpts(ctx, spanName, &StartSpanOpts{TracerName: "realm-game"})
+}
+
+func StartCronSpan(ctx context.Context, spanName string) (context.Context, span.Span) {
+	return StartSpanWithOpts(ctx, spanName, &StartSpanOpts{TracerName: "realm-cron"})
 }
 
 func GetSpan(ctx context.Context) span.Span {
