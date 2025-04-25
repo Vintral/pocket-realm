@@ -28,10 +28,12 @@ type Buff struct {
 }
 
 func (buff *Buff) AfterFind(tx *gorm.DB) (err error) {
-	ctx, sp := Tracer.Start(tx.Statement.Context, "Buff.AfterFind")
-	defer sp.End()
+	ctx, span := Tracer.Start(tx.Statement.Context, "Buff.AfterFind")
+	defer span.End()
 
 	log.Info().Msg("Buff.AfterFind")
+
+	span.SetAttributes(attribute.String("effects", buff.EffectList), attribute.Int64("id", int64(buff.ID)))
 
 	effects := strings.Split(buff.EffectList, ",")
 	for _, effectId := range effects {
@@ -42,6 +44,8 @@ func (buff *Buff) AfterFind(tx *gorm.DB) (err error) {
 			log.Error().Err(err).Msg("Error parsing effectId")
 		}
 	}
+
+	span.SetAttributes(attribute.Int64("effects_count", int64(len(buff.Effects))))
 
 	return
 }
@@ -140,6 +144,24 @@ func (buff *Buff) RemoveFromUser(baseContext context.Context, user *User) bool {
 	}
 
 	return false
+}
+
+func (buff *Buff) String() string {
+	return fmt.Sprint(buff.ID) + "|" + buff.Name + "|" + buff.EffectList + "|" + fmt.Sprint(buff.Item) + "|" + fmt.Sprint(buff.Duration) + "|" + fmt.Sprint(buff.MaxStacks)
+}
+
+func (buff *Buff) Effect() string {
+	var ret = ""
+
+	for i, effect := range buff.Effects {
+		if i > 0 {
+			ret += "|"
+		}
+
+		ret += effect.String()
+	}
+
+	return ret
 }
 
 func (buff *Buff) Dump() {

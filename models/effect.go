@@ -30,6 +30,22 @@ Percent: ` + fmt.Sprint(effect.Percent) + `
 =============================`)
 }
 
+func (effect *Effect) String() string {
+	var ret = ""
+
+	if effect.Amount > 0 {
+		ret += "+"
+	}
+	ret += fmt.Sprint(effect.Amount)
+	if effect.Percent {
+		ret += "%"
+	}
+
+	ret += "," + effect.Field
+
+	return ret
+}
+
 func LoadEffectById(ctx context.Context, effectId int) *Effect {
 	ctx, span := utils.StartSpan(ctx, "models.LoadEffectById")
 	defer span.End()

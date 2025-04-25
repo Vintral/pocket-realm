@@ -17,7 +17,7 @@ type UserDevotion struct {
 }
 
 func (devotion *UserDevotion) Dump() {
-	log.Info().Msg(`
+	log.Trace().Msg(`
 ========USER_DEVOTION========
 ID: ` + fmt.Sprint(devotion.ID) + `
 UserID: ` + fmt.Sprint(devotion.UserID) + `

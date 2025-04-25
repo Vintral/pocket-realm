@@ -1541,14 +1541,14 @@ func (user *User) RenounceDevotion(baseContext context.Context) bool {
 				log.Warn().Int("Level", i).Msg("Process level")
 				d.Dump()
 
-				if buff, err := LoadBuffById(ctx, int(d.Buff)); err == nil {
+				if buff, err := LoadBuffById(ctx, int(d.BuffId)); err == nil {
 					log.Warn().Int("User Buffs", len(user.Buffs)).Msg("Before removal of buff")
 					if !buff.RemoveFromUser(ctx, user) {
 						success = false
 						break
 					}
 				} else {
-					log.Error().Err(err).Int("buff", int(d.Buff)).Msg("Error loading buff")
+					log.Error().Err(err).Int("buff", int(d.BuffId)).Msg("Error loading buff")
 				}
 			}
 		} else {
@@ -1561,7 +1561,8 @@ func (user *User) RenounceDevotion(baseContext context.Context) bool {
 	success = len(user.Buffs) == before-int(devotion.Level)
 	if success {
 		if err := db.WithContext(ctx).Where("user_id = ? AND round_id = ?", user.ID, user.RoundID).Delete(&UserDevotion{}).Unscoped().Error; err == nil {
-			user.RoundData.LostDevotion = time.Now().Unix()
+			now := time.Now()
+			user.RoundData.LostDevotion = &now
 			if err := db.WithContext(ctx).Save(&user).Error; err != nil {
 				success = false
 				log.Error().Err(err).Msg("Error updating user after removing devotions")
