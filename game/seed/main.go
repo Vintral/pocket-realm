@@ -227,7 +227,7 @@ func createUserTables(db *gorm.DB, round *models.Round) {
 		TickFood:       0,
 		Wood:           200,
 		Metal:          200,
-		Faith:          25,
+		Faith:          2500,
 		Stone:          200,
 		Mana:           200,
 		Land:           200,
@@ -1276,19 +1276,19 @@ func createLifePantheon(db *gorm.DB) {
 		Pantheon: pantheon.ID,
 		Level:    1,
 		Upkeep:   25,
-		Buff:     8,
+		BuffId:   8,
 	})
 	db.Create(&models.Devotion{
 		Pantheon: pantheon.ID,
 		Level:    2,
 		Upkeep:   50,
-		Buff:     9,
+		BuffId:   9,
 	})
 	db.Create(&models.Devotion{
 		Pantheon: pantheon.ID,
 		Level:    3,
 		Upkeep:   100,
-		Buff:     10,
+		BuffId:   10,
 	})
 }
 
@@ -1301,19 +1301,19 @@ func createWarPantheon(db *gorm.DB) {
 		Pantheon: pantheon.ID,
 		Level:    1,
 		Upkeep:   25,
-		Buff:     11,
+		BuffId:   11,
 	})
 	db.Create(&models.Devotion{
 		Pantheon: pantheon.ID,
 		Level:    2,
 		Upkeep:   50,
-		Buff:     12,
+		BuffId:   12,
 	})
 	db.Create(&models.Devotion{
 		Pantheon: pantheon.ID,
 		Level:    3,
 		Upkeep:   100,
-		Buff:     13,
+		BuffId:   13,
 	})
 }
 
@@ -1327,19 +1327,19 @@ func createDeathPantheon(db *gorm.DB) {
 		Pantheon: pantheon.ID,
 		Level:    1,
 		Upkeep:   25,
-		Buff:     14,
+		BuffId:   14,
 	})
 	db.Create(&models.Devotion{
 		Pantheon: pantheon.ID,
 		Level:    2,
 		Upkeep:   50,
-		Buff:     15,
+		BuffId:   15,
 	})
 	db.Create(&models.Devotion{
 		Pantheon: pantheon.ID,
 		Level:    3,
 		Upkeep:   100,
-		Buff:     16,
+		BuffId:   16,
 	})
 }
 
@@ -1353,19 +1353,19 @@ func createEmpirePantheon(db *gorm.DB) uuid.UUID {
 		Pantheon: pantheon.ID,
 		Level:    1,
 		Upkeep:   25,
-		Buff:     17,
+		BuffId:   17,
 	})
 	db.Create(&models.Devotion{
 		Pantheon: pantheon.ID,
 		Level:    2,
 		Upkeep:   50,
-		Buff:     18,
+		BuffId:   18,
 	})
 	db.Create(&models.Devotion{
 		Pantheon: pantheon.ID,
 		Level:    3,
 		Upkeep:   100,
-		Buff:     19,
+		BuffId:   19,
 	})
 
 	return pantheon.GUID
