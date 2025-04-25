@@ -58,6 +58,7 @@ func RenounceDevotion(baseContext context.Context) {
 		Type:    "RENOUNCE_DEVOTION",
 		Success: user.RenounceDevotion(ctx),
 	})
+	user.Refresh()
 }
 
 func RaiseDevotion(baseContext context.Context) {
@@ -88,7 +89,7 @@ func RaiseDevotion(baseContext context.Context) {
 
 				if next != nil {
 					var buff *models.Buff
-					if err := db.WithContext(ctx).Where("id = ?", next.Buff).Find(&buff).Error; err == nil {
+					if err := db.WithContext(ctx).Where("id = ?", next.Buff.ID).Find(&buff).Error; err == nil {
 						if err := db.Model(&models.UserDevotion{}).Where("user_id = ? AND round_id = ?", user.ID, user.RoundID).Update("level", gorm.Expr("level + ?", 1)).Error; err != nil {
 							log.Error().Err(err).Msg("Error updating UserDevotion")
 						} else {
